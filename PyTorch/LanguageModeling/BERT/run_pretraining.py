@@ -291,7 +291,23 @@ def parse_arguments():
                         help='Disable tqdm progress bar')
     parser.add_argument('--steps_this_run', type=int, default=-1,
                         help='If provided, only run this many steps before exiting')
-
+    # additional arguments for gradient compression
+    parser.add_argument('--compressor', type=str, default='',
+                        help='which compressor')
+    parser.add_argument('--ef', type=str, default='',
+                        help='which error-feedback')
+    parser.add_argument('--compress-momentum', type=str, default='',
+                        help='which compress momentum')
+    parser.add_argument('--onebit-scaling', action='store_true', default=False,
+                        help='enable scaling for onebit compressor')
+    parser.add_argument('--k', default=1, type=float,
+                        help='topk or randomk')
+    parser.add_argument('--partition', default='linear', type=str,
+                        help='linear or natural')
+    parser.add_argument('--normalize', default='max', type=str,
+                        help='max or l2')
+    parser.add_argument('--fp16-pushpull', action='store_true', default=False,
+                        help='use fp16 compression during pushpull')
     args = parser.parse_args()
     args.fp16 = args.fp16 or args.amp
 
