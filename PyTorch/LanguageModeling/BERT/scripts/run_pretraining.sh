@@ -160,7 +160,7 @@ ENV+=" --env BYTEPS_PARTITION_BYTES:$partition_bytes"
 ENV+=" --env BYTEPS_LOG_LEVEL:INFO"
 
 
-CMD="python3 $repo_path/launcher/dist_launcher.py -WH $worker_hosts -SH $server_hosts --scheduler-ip $ip --scheduler-port $port --interface $interface -i $pem_file --username ubuntu $ENV $CMD"
+CMD="python3 $repo_path/launcher/dist_launcher.py -WH $worker_hosts -SH $server_hosts --scheduler-ip $ip --scheduler-port $port --interface $interface -i $pem_file --username ubuntu $ENV bpslaunch python3 $CMD"
 
 
 if [ "$create_logfile" = "true" ] ; then
