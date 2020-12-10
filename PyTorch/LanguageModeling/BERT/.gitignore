@@ -134,3 +134,7 @@ tensorflow_code
 
 # Models
 models
+
+server-hosts
+worker-hosts
+sshlog/
