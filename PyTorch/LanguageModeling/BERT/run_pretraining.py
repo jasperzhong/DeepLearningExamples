@@ -437,7 +437,9 @@ def prepare_model_and_optimizer(args, device):
     optimizer = bps.DistributedOptimizer(
         optimizer, named_parameters=model.named_parameters(),
         backward_passes_per_step=args.gradient_accumulation_steps,
-        compression_params=compression_params)
+        compression_params=compression_params, pre_scale_factor=1. / (get_world_size() *
+                                                                      args.gradient_accumulation_steps),
+        post_scale_factor=1.)
 
     model.checkpoint_activations(args.checkpoint_activations)
 
@@ -489,30 +491,31 @@ def take_optimizer_step(args, optimizer, model, overflow_buf, global_step):
         # manually allreduce gradients after all accumulation steps
         # check for Inf/NaN
         # 1. allocate an uninitialized buffer for flattened gradient
-        loss_scale = _amp_state.loss_scalers[0].loss_scale(
-        ) if args.fp16 else 1
-        master_grads = [p.grad for p in amp.master_params(
-            optimizer) if p.grad is not None]
-        flat_grad_size = sum(p.numel() for p in master_grads)
-        allreduce_dtype = torch.float16 if args.allreduce_post_accumulation_fp16 else torch.float32
-        flat_raw = torch.empty(
-            flat_grad_size, device='cuda', dtype=allreduce_dtype)
-        # 2. combine unflattening and predivision of unscaled 'raw' gradient
-        allreduced_views = apex_C.unflatten(flat_raw, master_grads)
-        overflow_buf.zero_()
-        amp_C.multi_tensor_scale(65536,
-                                 overflow_buf,
-                                 [master_grads, allreduced_views],
-                                 loss_scale / (get_world_size() * args.gradient_accumulation_steps))
-        # 3. sum gradient across ranks. Because of the predivision, this averages the gradient
-        torch.distributed.all_reduce(flat_raw)
-        # 4. combine unscaling and unflattening of allreduced gradient
-        overflow_buf.zero_()
-        amp_C.multi_tensor_scale(65536,
-                                 overflow_buf,
-                                 [allreduced_views, master_grads],
-                                 1./loss_scale)
+        # loss_scale = _amp_state.loss_scalers[0].loss_scale(
+        # ) if args.fp16 else 1
+        # master_grads = [p.grad for p in amp.master_params(
+        #     optimizer) if p.grad is not None]
+        # flat_grad_size = sum(p.numel() for p in master_grads)
+        # allreduce_dtype = torch.float16 if args.allreduce_post_accumulation_fp16 else torch.float32
+        # flat_raw = torch.empty(
+        #     flat_grad_size, device='cuda', dtype=allreduce_dtype)
+        # # 2. combine unflattening and predivision of unscaled 'raw' gradient
+        # allreduced_views = apex_C.unflatten(flat_raw, master_grads)
+        # overflow_buf.zero_()
+        # amp_C.multi_tensor_scale(65536,
+        #                          overflow_buf,
+        #                          [master_grads, allreduced_views],
+        #                          loss_scale / (get_world_size() * args.gradient_accumulation_steps))
+        # # 3. sum gradient across ranks. Because of the predivision, this averages the gradient
+        # torch.distributed.all_reduce(flat_raw)
+        # # 4. combine unscaling and unflattening of allreduced gradient
+        # overflow_buf.zero_()
+        # amp_C.multi_tensor_scale(65536,
+        #                          overflow_buf,
+        #                          [allreduced_views, master_grads],
+        #                          1./loss_scale)
         # 5. update loss scale
+
         if args.fp16:
             scaler = _amp_state.loss_scalers[0]
             old_overflow_buf = scaler._overflow_buf
@@ -537,6 +540,7 @@ def take_optimizer_step(args, optimizer, model, overflow_buf, global_step):
             if _amp_state.opt_properties.master_weights:
                 for param in optimizer._amp_stash.all_fp32_from_fp16_params:
                     param.grad = None
+
         for param in model.parameters():
             param.grad = None
     else:
@@ -676,6 +680,7 @@ def main():
                     if args.fp16:
                         with amp.scale_loss(loss, optimizer, delay_overflow_check=args.allreduce_post_accumulation) as scaled_loss:
                             scaled_loss.backward()
+                            optimizer.synchronize()
                     else:
                         loss.backward()
                     average_loss += loss.item()
