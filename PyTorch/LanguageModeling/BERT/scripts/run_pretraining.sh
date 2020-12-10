@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-echo "Container nvidia build = " $NVIDIA_BUILD_ID
+# echo "Container nvidia build = " $NVIDIA_BUILD_ID
 train_batch_size=${1:-8192}
 learning_rate=${2:-"6e-3"}
 precision=${3:-"fp16"}
@@ -34,17 +34,39 @@ learning_rate_phase2=${17:-"4e-3"}
 warmup_proportion_phase2=${18:-"0.128"}
 train_steps_phase2=${19:-1563}
 gradient_accumulation_steps_phase2=${20:-512}
-DATASET=hdf5_lower_case_1_seq_len_128_max_pred_20_masked_lm_prob_0.15_random_seed_12345_dupe_factor_5_shard_1472_test_split_10/books_wiki_en_corpus/training # change this for other datasets
+DATASET=hdf5_lower_case_1_seq_len_128_max_pred_20_masked_lm_prob_0.15_random_seed_12345_dupe_factor_5_shard_1536_large/books_wiki_en_corpus_train # change this for other datasets
+BERT_PREP_WORKING_DIR=$HOME/datasets
 DATA_DIR_PHASE1=${21:-$BERT_PREP_WORKING_DIR/${DATASET}/}
-BERT_CONFIG=bert_config.json
-DATASET2=hdf5_lower_case_1_seq_len_512_max_pred_80_masked_lm_prob_0.15_random_seed_12345_dupe_factor_5_shard_1472_test_split_10/books_wiki_en_corpus/training # change this for other datasets
+BERT_CONFIG=bert_base_config.json
+DATASET2=hdf5_lower_case_1_seq_len_512_max_pred_80_masked_lm_prob_0.15_random_seed_12345_dupe_factor_5_shard_1536_large/books_wiki_en_corpus_train # change this for other datasets
 DATA_DIR_PHASE2=${22:-$BERT_PREP_WORKING_DIR/${DATASET2}/}
-CODEDIR=${23:-"/workspace/bert"}
+WORKSPACE=$HOME/repos/DeepLearningExamples/PyTorch/LanguageModeling/BERT
+CODEDIR=${23:-$WORKSPACE}
 init_checkpoint=${24:-"None"}
 RESULTS_DIR=$CODEDIR/results
 CHECKPOINTS_DIR=$RESULTS_DIR/checkpoints
 
 mkdir -p $CHECKPOINTS_DIR
+
+# byteps 
+
+## path
+interface=ens3
+ip=$(ifconfig $interface | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*' | grep -v '127.0.0.1')
+port=1234
+NVIDIA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
+
+repo_path=$HOME/repos/byteps
+worker_hosts=worker-hosts
+server_hosts=server-hosts
+pem_file=${25:-$HOME/vyce.pem}
+
+## finetune params
+threadpool_size=16
+omp_num_threads=4
+partition_bytes=4096000
+min_compress_bytes=1024000
+server_engine_thread=4
 
 
 if [ ! -d "$DATA_DIR_PHASE1" ] ; then
@@ -107,7 +129,7 @@ CMD=" $CODEDIR/run_pretraining.py"
 CMD+=" --input_dir=$DATA_DIR_PHASE1"
 CMD+=" --output_dir=$CHECKPOINTS_DIR"
 CMD+=" --config_file=$BERT_CONFIG"
-CMD+=" --bert_model=bert-large-uncased"
+CMD+=" --bert_model=bert-base-uncased"
 CMD+=" --train_batch_size=$train_batch_size"
 CMD+=" --max_seq_length=128"
 CMD+=" --max_predictions_per_seq=20"
@@ -125,7 +147,20 @@ CMD+=" $INIT_CHECKPOINT"
 CMD+=" --do_train"
 CMD+=" --json-summary ${RESULTS_DIR}/dllogger.json "
 
-CMD="python3 -m torch.distributed.launch --nproc_per_node=$num_gpus $CMD"
+# byteps env
+ENV=""
+ENV+=" --env OMP_WAIT_POLICY:PASSIVE"
+ENV+=" --env OMP_NUM_THREADS:$omp_num_threads"
+ENV+=" --env BYTEPS_THREADPOOL_SIZE:$threadpool_size"
+ENV+=" --env BYTEPS_MIN_COMPRESS_BYTES:$min_compress_bytes"
+ENV+=" --env BYTEPS_NUMA_ON:1"
+ENV+=" --env NVIDIA_VISIBLE_DEVICES:$NVIDIA_VISIBLE_DEVICES"
+ENV+=" --env BYTEPS_SERVER_ENGINE_THREAD:$server_engine_thread"
+ENV+=" --env BYTEPS_PARTITION_BYTES:$partition_bytes"
+ENV+=" --env BYTEPS_LOG_LEVEL:INFO"
+
+
+CMD="python3 $repo_path/launcher/dist_launcher.py -WH $worker_hosts -SH $server_hosts --scheduler-ip $ip --scheduler-port $port --interface $interface -i $pem_file --username ubuntu $ENV $CMD"
 
 
 if [ "$create_logfile" = "true" ] ; then
