@@ -16,47 +16,42 @@
 
 """BERT finetuning runner."""
 
-from __future__ import absolute_import
-from os import name
-import signal
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
+import argparse
 # ==================
 import csv
-import os
-import time
-import argparse
-import random
-import h5py
-from tqdm import tqdm, trange
-import os
-import numpy as np
-import torch
-from torch.utils.data import DataLoader, RandomSampler, SequentialSampler, Dataset
-from torch.utils.data.distributed import DistributedSampler
 import math
-from apex import amp
 import multiprocessing
+import os
+import random
+import signal
+import time
+from concurrent.futures import ProcessPoolExecutor
+from os import name
 
-from tokenization import BertTokenizer
-import modeling
-from apex.optimizers import FusedLAMB
-from schedulers import PolyWarmUpScheduler
-
-from file_utils import PYTORCH_PRETRAINED_BERT_CACHE
-from utils import is_main_process, format_step, get_world_size, get_rank
-from apex.parallel import DistributedDataParallel as DDP
-from schedulers import LinearWarmUpScheduler
-from apex.parallel.distributed import flat_dist_call
 import amp_C
 import apex_C
-from apex.amp import _amp_state
-
-import dllogger
-from concurrent.futures import ProcessPoolExecutor
-
 import byteps.torch as bps
+import dllogger
+import h5py
+import numpy as np
+import torch
+from apex import amp
+from apex.amp import _amp_state
+from apex.optimizers import FusedLAMB
+from apex.parallel import DistributedDataParallel as DDP
+from apex.parallel.distributed import flat_dist_call
+from torch.utils.data import (DataLoader, Dataset, RandomSampler,
+                              SequentialSampler)
+from torch.utils.data.distributed import DistributedSampler
+from tqdm import tqdm, trange
+
+import modeling
+from file_utils import PYTORCH_PRETRAINED_BERT_CACHE
+from schedulers import LinearWarmUpScheduler, PolyWarmUpScheduler
+from tokenization import BertTokenizer
+from utils import format_step, get_rank, get_world_size, is_main_process
 
 torch._C._jit_set_profiling_mode(False)
 torch._C._jit_set_profiling_executor(False)
