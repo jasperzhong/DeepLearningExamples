@@ -30,14 +30,15 @@ import time
 from concurrent.futures import ProcessPoolExecutor
 from os import name
 
-import amp_C
-import apex_C
+
 import byteps.torch as bps
 import dllogger
 import h5py
 import numpy as np
 import torch
 from apex import amp
+import amp_C
+import apex_C
 from apex.amp import _amp_state
 from apex.optimizers import FusedLAMB
 from apex.parallel import DistributedDataParallel as DDP
