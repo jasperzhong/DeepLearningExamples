@@ -479,6 +479,10 @@ def prepare_model_and_optimizer(args, device):
     # TODO: adapt to byteps
     if args.local_rank != -1:
         # BytePS: broadcast parameters & optimizer state.
+        # broadcast AMP master parameters
+        if args.fp16:
+            optimizer._lazy_init_maybe_master_weights()
+            optimizer._amp_stash.lazy_init_called = True
         bps.broadcast_parameters(model.state_dict(), root_rank=0)
         bps.broadcast_optimizer_state(optimizer, root_rank=0)
 
