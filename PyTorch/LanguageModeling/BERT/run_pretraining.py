@@ -539,7 +539,7 @@ def take_optimizer_step(args, optimizer, model, overflow_buf, global_step):
         # 6. call optimizer step function
         if had_overflow == 0:
             # BytePS: pushpull has been done already
-            with bps.DistributedOptimizer.skip_synchronize():
+            with optimizer.skip_synchronize():
                 optimizer.step()
             global_step += 1
         else:
