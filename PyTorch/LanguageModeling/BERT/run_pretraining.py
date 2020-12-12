@@ -422,9 +422,7 @@ def prepare_model_and_optimizer(args, device):
 
     optimizer = FusedLAMB(optimizer_grouped_parameters,
                           lr=args.learning_rate)
-    lr_scheduler = PolyWarmUpScheduler(optimizer,
-                                       warmup=args.warmup_proportion,
-                                       total_steps=args.max_steps)
+
     print("total_steps=%d" % (args.max_steps), flush=True)
     compression_params = {
         "compressor": args.compressor,
@@ -443,6 +441,10 @@ def prepare_model_and_optimizer(args, device):
         compression_params=compression_params, pre_scale_factor=1. / (get_world_size() *
                                                                       args.gradient_accumulation_steps),
         post_scale_factor=1.)
+
+    lr_scheduler = PolyWarmUpScheduler(optimizer,
+                                       warmup=args.warmup_proportion,
+                                       total_steps=args.max_steps)
 
     if args.fp16:
 
