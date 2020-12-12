@@ -158,7 +158,11 @@ ENV+=" --env NVIDIA_VISIBLE_DEVICES:$NVIDIA_VISIBLE_DEVICES"
 ENV+=" --env BYTEPS_SERVER_ENGINE_THREAD:$server_engine_thread"
 ENV+=" --env BYTEPS_PARTITION_BYTES:$partition_bytes"
 ENV+=" --env BYTEPS_LOG_LEVEL:INFO"
-
+ENV+=" --env BYTEPS_FORCE_DISTRIBUTED:1"
+ENV+=" --env BYTEPS_TRACE_ON:1"
+ENV+=" --env BYTEPS_TRACE_START_STEP:10"
+ENV+=" --env BYTEPS_TRACE_END_STEP:20"
+ENV+=" --env BYTEPS_TRACE_DIR:./traces"
 
 CMD="python3 $repo_path/launcher/dist_launcher.py -WH $worker_hosts -SH $server_hosts --scheduler-ip $ip --scheduler-port $port --interface $interface -i $pem_file --username ubuntu $ENV source ~/.zshrc; bpslaunch python3 $CMD"
 
