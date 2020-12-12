@@ -62,11 +62,11 @@ server_hosts=server-hosts
 pem_file=${25:-$HOME/vyce.pem}
 
 ## finetune params
-threadpool_size=16
+threadpool_size=0
 omp_num_threads=4
-partition_bytes=4096000
+partition_bytes=8192000
 min_compress_bytes=1024000
-server_engine_thread=4
+server_engine_thread=8
 
 
 if [ ! -d "$DATA_DIR_PHASE1" ] ; then
