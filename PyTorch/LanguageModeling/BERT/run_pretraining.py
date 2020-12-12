@@ -425,6 +425,7 @@ def prepare_model_and_optimizer(args, device):
     lr_scheduler = PolyWarmUpScheduler(optimizer,
                                        warmup=args.warmup_proportion,
                                        total_steps=args.max_steps)
+    print("total_steps=%d" % (args.max_steps), flush=True)
     compression_params = {
         "compressor": args.compressor,
         "ef": args.ef,
