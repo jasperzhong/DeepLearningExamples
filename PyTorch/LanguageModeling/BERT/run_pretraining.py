@@ -534,10 +534,7 @@ def take_optimizer_step(args, optimizer, model, overflow_buf, global_step):
 
         if args.fp16:
             scaler = _amp_state.loss_scalers[0]
-            old_overflow_buf = scaler._overflow_buf
-            scaler._overflow_buf = overflow_buf
             had_overflow = scaler.update_scale()
-            scaler._overfloat_buf = old_overflow_buf
         else:
             had_overflow = 0
         # 6. call optimizer step function
