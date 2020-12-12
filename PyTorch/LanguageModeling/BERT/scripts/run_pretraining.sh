@@ -64,7 +64,7 @@ pem_file=${25:-$HOME/vyce.pem}
 ## finetune params
 threadpool_size=0
 omp_num_threads=4
-partition_bytes=8192000
+partition_bytes=4096000
 min_compress_bytes=1024000
 server_engine_thread=8
 
