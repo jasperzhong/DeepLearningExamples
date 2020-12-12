@@ -120,9 +120,7 @@ class PolyWarmUpScheduler(LRScheduler):
         else:
             self.last_epoch = 1
 
-        print("self.last_epoch=%d" % (self.last_epoch), flush=True)
         for param_group, lr in zip(self.optimizer.param_groups, self.get_lr()):
-            print("update lr=%.8f" % lr, flush=True)
             param_group['lr'] = lr
 
     def get_lr(self):

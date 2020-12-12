@@ -423,7 +423,6 @@ def prepare_model_and_optimizer(args, device):
     optimizer = FusedLAMB(optimizer_grouped_parameters,
                           lr=args.learning_rate)
 
-    print("total_steps=%d" % (args.max_steps), flush=True)
     compression_params = {
         "compressor": args.compressor,
         "ef": args.ef,
@@ -545,9 +544,6 @@ def take_optimizer_step(args, optimizer, model, overflow_buf, global_step):
             # BytePS: pushpull has been done already
             with optimizer.skip_synchronize():
                 optimizer.step()
-            print("global_step=%d step=%d lr=%.8f" % (
-                global_step, optimizer.param_groups[0]['step'], optimizer.param_groups[0]['lr']), flush=True)
-
             global_step += 1
         else:
             # Overflow detected, print message and clear gradients
