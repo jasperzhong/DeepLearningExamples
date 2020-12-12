@@ -716,9 +716,8 @@ def main():
                             average_loss /= get_world_size()
                             # BytePS: average loss
                             bps.declare("avg_loss")
-                            bps.push_pull_inplace(torch.tensor(
-                                average_loss).cuda(), name="avg_loss", average=False)
-                            average_loss /= bps.size()
+                            bps.push_pull_inplace(
+                                average_loss, name="avg_loss", average=False)
                             # torch.distributed.all_reduce(average_loss)
                         final_loss = average_loss.item()
                         if is_main_process():
