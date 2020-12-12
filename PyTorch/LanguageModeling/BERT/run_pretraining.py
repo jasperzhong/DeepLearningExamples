@@ -542,7 +542,7 @@ def take_optimizer_step(args, optimizer, model, overflow_buf, global_step):
             # BytePS: pushpull has been done already
             with optimizer.skip_synchronize():
                 optimizer.step()
-            print("global_step=%d step=%d lr=%.2f" % (
+            print("global_step=%d step=%d lr=%.8f" % (
                 global_step, optimizer.param_groups[0]['step'], optimizer.param_groups[0]['lr']), flush=True)
 
             global_step += 1
