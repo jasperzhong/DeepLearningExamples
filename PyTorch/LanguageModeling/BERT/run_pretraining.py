@@ -695,7 +695,9 @@ def main():
                     if args.fp16:
                         with amp.scale_loss(loss, optimizer, delay_overflow_check=args.allreduce_post_accumulation) as scaled_loss:
                             scaled_loss.backward()
-                            optimizer.synchronize()
+                            # BytePS: only pushpull after accumulation
+                            if training_steps % args.gradient_accumulation_steps == 0:
+                                optimizer.synchronize()
                     else:
                         loss.backward()
                     average_loss += loss.item()
