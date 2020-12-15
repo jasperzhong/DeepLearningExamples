@@ -556,8 +556,9 @@ def take_optimizer_step(args, optimizer, model, overflow_buf, global_step):
                 for param in optimizer._amp_stash.all_fp32_from_fp16_params:
                     param.grad = None
 
-        for param in model.parameters():
-            param.grad = None
+        optimizer.zero_grad()
+        # for param in model.parameters():
+        #     param.grad = None
     else:
         optimizer.step()
         # optimizer.zero_grad()
