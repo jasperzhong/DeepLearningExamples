@@ -593,8 +593,9 @@ def take_optimizer_step(args, optimizer, model, overflow_buf, global_step):
             for param in optimizer._amp_stash.all_fp32_from_fp16_params:
                 is_nan = all(torch.isnan(
                     param.data).flatten().cpu().numpy().tolist())
-                print("master params nan: ")
-                print(param.data)
+                if is_nan:
+                    print("master params nan: ")
+                    print(param.data)
                 param.grad = None
 
     else:
