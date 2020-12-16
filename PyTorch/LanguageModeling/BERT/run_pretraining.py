@@ -542,15 +542,13 @@ def take_optimizer_step(args, optimizer, model, overflow_buf, global_step):
         # 6. call optimizer step function
         if had_overflow == 0:
             # BytePS: pushpull has been done already
-            if global_step == 150:
-                for name, param in model.named_parameters():
-                    if param.grad is not None:
-                        is_nan = any(torch.isnan(
-                            param.grad).flatten().cpu().numpy().tolist())
-                        print("%s's grad whether nan: %d" %
-                              (name, is_nan), flush=True)
-                        if is_nan:
-                            print(param.grad)
+            for name, param in model.named_parameters():
+                if param.grad is not None:
+                    if name == "bert.embeddings.token_type_embeddings.weight":
+                        print("bert.embeddings.token_type_embeddings.weight's grad")
+                        print(param.grad)
+                        print("bert.embeddings.token_type_embeddings.weight")
+                        print(param.data)
 
             with optimizer.skip_synchronize():
                 optimizer.step()
