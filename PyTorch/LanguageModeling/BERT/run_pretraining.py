@@ -552,11 +552,41 @@ def take_optimizer_step(args, optimizer, model, overflow_buf, global_step):
                 dllogger.log(step="PARAMETER", data={
                              "loss_scale": scaler.loss_scale()})
             if _amp_state.opt_properties.master_weights:
+                check_nan = []
                 for param in optimizer._amp_stash.all_fp32_from_fp16_params:
+                    check_nan.extend(torch.isnan(
+                        param.data).flatten().cpu().numpy().tolist())
                     param.grad = None
+                print("step=%d check master params: %d, rank=%d" %
+                      (global_step, any(check_nan), get_rank()), flush=True)
 
+        check_nan = []
         for param in model.parameters():
+            check_nan.extend(torch.isnan(
+                param.data).flatten().cpu().numpy().tolist())
             param.grad = None
+        print("step=%d check model params: %d, rank=%d" %
+              (global_step, any(check_nan), get_rank()), flush=True)
+
+        if any(check_nan):
+            print("nan detected!!! scan model parameters!")
+            for name, param in model.named_parameters():
+                is_nan = any(torch.isnan(
+                    param.data).flatten().cpu().numpy().tolist())
+                print("%s whether nan: %d" % (name, is_nan), flush=True)
+                if is_nan:
+                    print(param.data)
+
+            print("check master params!")
+            check_nan = []
+            for param in optimizer._amp_stash.all_fp32_from_fp16_params:
+                is_nan = all(torch.isnan(
+                    param.data).flatten().cpu().numpy().tolist())
+                if is_nan:
+                    print("master params nan: ")
+                    print(param.data)
+                param.grad = None
+
     else:
         optimizer.step()
         # optimizer.zero_grad()
