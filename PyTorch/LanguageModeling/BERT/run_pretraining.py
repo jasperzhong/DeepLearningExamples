@@ -440,7 +440,7 @@ def prepare_model_and_optimizer(args, device):
         compression_params=compression_params, pre_scale_factor=1. / (get_world_size() *
                                                                       args.gradient_accumulation_steps),
         post_scale_factor=1.)
-
+    
     bps.broadcast_parameters(model.state_dict(), root_rank=0)
     bps.broadcast_optimizer_state(optimizer, root_rank=0)
 
@@ -485,7 +485,7 @@ def prepare_model_and_optimizer(args, device):
     if args.local_rank != -1:
         # BytePS: broadcast parameters & optimizer state.
         # broadcast AMP master parameters
-        pass
+        pass 
 
         # if not args.allreduce_post_accumulation:
         #     model = DDP(model, message_size=250000000,
@@ -541,6 +541,14 @@ def take_optimizer_step(args, optimizer, model, overflow_buf, global_step):
         # 6. call optimizer step function
         if had_overflow == 0:
             # BytePS: pushpull has been done already
+            for name, param in model.named_parameters():
+                if param.grad is not None:
+                    if name == "bert.embeddings.token_type_embeddings.weight":
+                        print("bert.embeddings.token_type_embeddings.weight's grad")
+                        print(param.grad)
+                        print("bert.embeddings.token_type_embeddings.weight")
+                        print(param.data)
+
             with optimizer.skip_synchronize():
                 optimizer.step()
             global_step += 1
