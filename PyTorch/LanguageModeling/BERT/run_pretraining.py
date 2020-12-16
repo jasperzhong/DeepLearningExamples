@@ -542,6 +542,16 @@ def take_optimizer_step(args, optimizer, model, overflow_buf, global_step):
         # 6. call optimizer step function
         if had_overflow == 0:
             # BytePS: pushpull has been done already
+            if global_step == 150:
+                for name, param in model.named_parameters():
+                    if param.grad:
+                        is_nan = any(torch.isnan(
+                            param.grad).flatten().cpu().numpy().tolist())
+                        print("%s's grad whether nan: %d" %
+                              (name, is_nan), flush=True)
+                        if is_nan:
+                            print(param.grad)
+
             with optimizer.skip_synchronize():
                 optimizer.step()
             global_step += 1
@@ -572,17 +582,21 @@ def take_optimizer_step(args, optimizer, model, overflow_buf, global_step):
         if any(check_nan):
             print("nan detected!!! scan model parameters!")
             for name, param in model.named_parameters():
-                print("%s whether nan: %d" % (name, any(torch.isnan(
-                    param.data).flatten().cpu().numpy().tolist())), flush=True)
+                is_nan = any(torch.isnan(
+                    param.data).flatten().cpu().numpy().tolist())
+                print("%s whether nan: %d" % (name, is_nan), flush=True)
+                if is_nan:
+                    print(param.data)
 
             print("check master params!")
             check_nan = []
             for param in optimizer._amp_stash.all_fp32_from_fp16_params:
-                check_nan.extend(torch.isnan(
+                is_nan = all(torch.isnan(
                     param.data).flatten().cpu().numpy().tolist())
+                print("master params nan: ")
+                print(param.data)
                 param.grad = None
-            print("step=%d check master params: %d, rank=%d" %
-                  (global_step, any(check_nan), get_rank()), flush=True)
+
     else:
         optimizer.step()
         # optimizer.zero_grad()
