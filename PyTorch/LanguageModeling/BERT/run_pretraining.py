@@ -558,16 +558,16 @@ def take_optimizer_step(args, optimizer, model, overflow_buf, global_step):
                     check_nan.extend(torch.isnan(
                         param.data).flatten().cpu().numpy().tolist())
                     param.grad = None
-                print("check master params: %d, rank=%d" %
-                      (any(check_nan), get_rank()), flush=True)
+                print("step=%d check master params: %d, rank=%d" %
+                      (global_step, any(check_nan), get_rank()), flush=True)
 
         check_nan = []
         for param in model.parameters():
             check_nan.extend(torch.isnan(
                 param.data).flatten().cpu().numpy().tolist())
             param.grad = None
-        print("check model params: %d, rank=%d" %
-              (any(check_nan), get_rank()), flush=True)
+        print("step=%d check model params: %d, rank=%d" %
+              (global_step, any(check_nan), get_rank()), flush=True)
     else:
         optimizer.step()
         # optimizer.zero_grad()
