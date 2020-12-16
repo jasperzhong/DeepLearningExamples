@@ -440,7 +440,7 @@ def prepare_model_and_optimizer(args, device):
         compression_params=compression_params, pre_scale_factor=1. / (get_world_size() *
                                                                       args.gradient_accumulation_steps),
         post_scale_factor=1.)
-    
+
     bps.broadcast_parameters(model.state_dict(), root_rank=0)
     bps.broadcast_optimizer_state(optimizer, root_rank=0)
 
@@ -485,7 +485,7 @@ def prepare_model_and_optimizer(args, device):
     if args.local_rank != -1:
         # BytePS: broadcast parameters & optimizer state.
         # broadcast AMP master parameters
-        pass 
+        pass
 
         # if not args.allreduce_post_accumulation:
         #     model = DDP(model, message_size=250000000,
@@ -541,14 +541,6 @@ def take_optimizer_step(args, optimizer, model, overflow_buf, global_step):
         # 6. call optimizer step function
         if had_overflow == 0:
             # BytePS: pushpull has been done already
-            for name, param in model.named_parameters():
-                if param.grad is not None:
-                    if name == "bert.embeddings.token_type_embeddings.weight":
-                        print("bert.embeddings.token_type_embeddings.weight's grad")
-                        print(param.grad)
-                        print("bert.embeddings.token_type_embeddings.weight")
-                        print(param.data)
-
             with optimizer.skip_synchronize():
                 optimizer.step()
             global_step += 1
@@ -560,41 +552,11 @@ def take_optimizer_step(args, optimizer, model, overflow_buf, global_step):
                 dllogger.log(step="PARAMETER", data={
                              "loss_scale": scaler.loss_scale()})
             if _amp_state.opt_properties.master_weights:
-                check_nan = []
                 for param in optimizer._amp_stash.all_fp32_from_fp16_params:
-                    check_nan.extend(torch.isnan(
-                        param.data).flatten().cpu().numpy().tolist())
                     param.grad = None
-                print("step=%d check master params: %d, rank=%d" %
-                      (global_step, any(check_nan), get_rank()), flush=True)
 
-        check_nan = []
         for param in model.parameters():
-            check_nan.extend(torch.isnan(
-                param.data).flatten().cpu().numpy().tolist())
             param.grad = None
-        print("step=%d check model params: %d, rank=%d" %
-              (global_step, any(check_nan), get_rank()), flush=True)
-
-        if any(check_nan):
-            print("nan detected!!! scan model parameters!")
-            for name, param in model.named_parameters():
-                is_nan = any(torch.isnan(
-                    param.data).flatten().cpu().numpy().tolist())
-                print("%s whether nan: %d" % (name, is_nan), flush=True)
-                if is_nan:
-                    print(param.data)
-
-            print("check master params!")
-            check_nan = []
-            for param in optimizer._amp_stash.all_fp32_from_fp16_params:
-                is_nan = all(torch.isnan(
-                    param.data).flatten().cpu().numpy().tolist())
-                if is_nan:
-                    print("master params nan: ")
-                    print(param.data)
-                param.grad = None
-
     else:
         optimizer.step()
         # optimizer.zero_grad()
