@@ -544,7 +544,7 @@ def take_optimizer_step(args, optimizer, model, overflow_buf, global_step):
             # BytePS: pushpull has been done already
             if global_step == 150:
                 for name, param in model.named_parameters():
-                    if param.grad:
+                    if param.grad is not None:
                         is_nan = any(torch.isnan(
                             param.grad).flatten().cpu().numpy().tolist())
                         print("%s's grad whether nan: %d" %
