@@ -568,6 +568,21 @@ def take_optimizer_step(args, optimizer, model, overflow_buf, global_step):
             param.grad = None
         print("step=%d check model params: %d, rank=%d" %
               (global_step, any(check_nan), get_rank()), flush=True)
+
+        if any(check_nan):
+            print("nan detected!!! scan model parameters!")
+            for name, param in model.named_parameters():
+                print("%s whether nan: %d" % (name, any(torch.isnan(
+                    param.data).flatten().cpu().numpy().tolist())), flush=True)
+
+            print("check master params!")
+            check_nan = []
+            for param in optimizer._amp_stash.all_fp32_from_fp16_params:
+                check_nan.extend(torch.isnan(
+                    param.data).flatten().cpu().numpy().tolist())
+                param.grad = None
+            print("step=%d check master params: %d, rank=%d" %
+                  (global_step, any(check_nan), get_rank()), flush=True)
     else:
         optimizer.step()
         # optimizer.zero_grad()
