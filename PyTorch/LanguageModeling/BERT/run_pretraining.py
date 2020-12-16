@@ -440,6 +440,9 @@ def prepare_model_and_optimizer(args, device):
         compression_params=compression_params, pre_scale_factor=1. / (get_world_size() *
                                                                       args.gradient_accumulation_steps),
         post_scale_factor=1.)
+    
+    bps.broadcast_parameters(model.state_dict(), root_rank=0)
+    bps.broadcast_optimizer_state(optimizer, root_rank=0)
 
     lr_scheduler = PolyWarmUpScheduler(optimizer,
                                        warmup=args.warmup_proportion,
@@ -482,11 +485,7 @@ def prepare_model_and_optimizer(args, device):
     if args.local_rank != -1:
         # BytePS: broadcast parameters & optimizer state.
         # broadcast AMP master parameters
-        if args.fp16:
-            optimizer._lazy_init_maybe_master_weights()
-            optimizer._amp_stash.lazy_init_called = True
-        bps.broadcast_parameters(model.state_dict(), root_rank=0)
-        bps.broadcast_optimizer_state(optimizer, root_rank=0)
+        pass 
 
         # if not args.allreduce_post_accumulation:
         #     model = DDP(model, message_size=250000000,
