@@ -553,12 +553,15 @@ def take_optimizer_step(args, optimizer, model, overflow_buf, global_step):
                 dllogger.log(step="PARAMETER", data={
                              "loss_scale": scaler.loss_scale()})
             if _amp_state.opt_properties.master_weights:
+                print("check master params", flush=True)
                 for param in optimizer._amp_stash.all_fp32_from_fp16_params:
+                    print(torch.isnan(param.data), flush=True)
                     param.grad = None
 
-        optimizer.zero_grad()
-        # for param in model.parameters():
-        #     param.grad = None
+        for param in model.parameters():
+            print("check model params", flush=True)
+            print(torch.isnan(param.data), flush=True)
+            param.grad = None
     else:
         optimizer.step()
         # optimizer.zero_grad()
