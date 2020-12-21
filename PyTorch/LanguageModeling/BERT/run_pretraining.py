@@ -336,6 +336,8 @@ def setup_training(args):
         # BytePS: Init
         bps.init()
         args.n_gpu = 1
+        args.allreduce_post_accumulation = False
+        args.allreduce_post_accumulation_fp16 = False
 
     if args.gradient_accumulation_steps == 1:
         args.allreduce_post_accumulation = False
@@ -433,12 +435,10 @@ def prepare_model_and_optimizer(args, device):
         "normalize": args.normalize,
         "seed": args.seed
     }
-
+    
     optimizer = bps.DistributedOptimizer(
         optimizer, named_parameters=model.named_parameters(),
-        backward_passes_per_step=args.gradient_accumulation_steps,
-        compression_params=compression_params, pre_scale_factor=1. / (get_world_size() *
-                                                                      args.gradient_accumulation_steps),
+        compression_params=compression_params, pre_scale_factor=1. / (get_world_size()),
         post_scale_factor=1.)
     
     bps.broadcast_parameters(model.state_dict(), root_rank=0)
@@ -733,8 +733,7 @@ def main():
                         with amp.scale_loss(loss, optimizer, delay_overflow_check=args.allreduce_post_accumulation) as scaled_loss:
                             scaled_loss.backward()
                             # BytePS: only pushpull after accumulation
-                            if training_steps % args.gradient_accumulation_steps == 0:
-                                optimizer.synchronize()
+                            optimizer.synchronize()
                     else:
                         loss.backward()
                     average_loss += loss.item()
