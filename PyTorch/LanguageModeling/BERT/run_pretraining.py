@@ -596,7 +596,15 @@ def take_optimizer_step(args, optimizer, model, overflow_buf, global_step):
                 param.grad = None
 
     else:
-        optimizer.step()
+        for name, param in model.named_parameters():
+            if param.grad is not None:
+                if name == "bert.embeddings.token_type_embeddings.weight":
+                    print("bert.embeddings.token_type_embeddings.weight's grad")
+                    print(param.grad)
+                    print("bert.embeddings.token_type_embeddings.weight")
+                    print(param.data)
+        with optimizer.skip_synchronize():
+            optimizer.step()
         # optimizer.zero_grad()
         for param in model.parameters():
             param.grad = None
