@@ -14,17 +14,17 @@
 # limitations under the License.
 
 # echo "Container nvidia build = " $NVIDIA_BUILD_ID
-train_batch_size=${1:-8192}
-learning_rate=${2:-"6e-3"}
+train_batch_size=${1:-128}
+learning_rate=${2:-"0.0017678"}
 precision=${3:-"fp16"}
 num_gpus=${4:-8}
-warmup_proportion=${5:-"0.2843"}
-train_steps=${6:-7038}
-save_checkpoint_steps=${7:-200}
+warmup_proportion=${5:-"0.025"}
+train_steps=${6:-112500}
+save_checkpoint_steps=${7:-5000}
 resume_training=${8:-"false"}
 create_logfile=${9:-"true"}
 accumulate_gradients=${10:-"true"}
-gradient_accumulation_steps=${11:-128}
+gradient_accumulation_steps=${11:-1}
 seed=${12:-12439}
 job_name=${13:-"bert_lamb_pretraining"}
 allreduce_post_accumulation=${14:-"true"}
@@ -66,7 +66,7 @@ threadpool_size=0
 omp_num_threads=4
 partition_bytes=4096000
 min_compress_bytes=1024000
-server_engine_thread=8
+server_engine_thread=4
 
 
 if [ ! -d "$DATA_DIR_PHASE1" ] ; then
