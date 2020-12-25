@@ -273,7 +273,7 @@ def parse_arguments():
                         help="Number of training steps in Phase1 - seq len 128")
     parser.add_argument('--init_loss_scale',
                         type=int,
-                        default=2**20,
+                        default=2**16,
                         help="Initial loss scaler value")
     parser.add_argument("--do_train",
                         default=False,
@@ -435,12 +435,13 @@ def prepare_model_and_optimizer(args, device):
         "normalize": args.normalize,
         "seed": args.seed
     }
-    
+
     optimizer = bps.DistributedOptimizer(
         optimizer, named_parameters=model.named_parameters(),
-        compression_params=compression_params, pre_scale_factor=1. / (get_world_size()),
+        compression_params=compression_params, pre_scale_factor=1. /
+        (get_world_size()),
         post_scale_factor=1.)
-    
+
     bps.broadcast_parameters(model.state_dict(), root_rank=0)
     bps.broadcast_optimizer_state(optimizer, root_rank=0)
 
@@ -485,7 +486,7 @@ def prepare_model_and_optimizer(args, device):
     if args.local_rank != -1:
         # BytePS: broadcast parameters & optimizer state.
         # broadcast AMP master parameters
-        pass 
+        pass
 
         # if not args.allreduce_post_accumulation:
         #     model = DDP(model, message_size=250000000,
@@ -596,6 +597,13 @@ def take_optimizer_step(args, optimizer, model, overflow_buf, global_step):
                 param.grad = None
 
     else:
+        for name, param in model.named_parameters():
+            if param.grad is not None:
+                if name == "bert.embeddings.token_type_embeddings.weight":
+                    print("bert.embeddings.token_type_embeddings.weight's grad")
+                    print(param.grad)
+                    print("bert.embeddings.token_type_embeddings.weight")
+                    print(param.data)
         with optimizer.skip_synchronize():
             optimizer.step()
         # optimizer.zero_grad()
