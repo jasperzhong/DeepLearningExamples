@@ -774,7 +774,7 @@ def main():
 
                     if global_step >= args.steps_this_run or training_steps % (
                             args.num_steps_per_checkpoint * args.gradient_accumulation_steps) == 0 or timeout_sent:
-                        if is_main_process() and not args.skip_checkpoint:
+                        if not args.skip_checkpoint:
                             # Save a trained model
                             dllogger.log(step="PARAMETER", data={
                                          "checkpoint_step": global_step})
