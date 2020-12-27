@@ -17,6 +17,7 @@
 
 WORKSPACE=$HOME/repos/DeepLearningExamples/PyTorch/LanguageModeling/BERT
 CODEDIR=${23:-$WORKSPACE}
+RESULTS_DIR=$CODEDIR/results
 init_checkpoint=${1:-$RESULTS_DIR/checkpoints-dithering/ckpt_125000.pt}
 epochs=${2:-"2.0"}
 batch_size=${3:-"4"}
