@@ -28,6 +28,9 @@ def is_main_process():
     return get_rank() == 0
 
 
+def is_local_root():
+    return bps.local_rank() == bps.local_size() - 1
+
 # def barrier():
 #     if dist.is_available() and dist.is_initialized():
 #         dist.barrier()

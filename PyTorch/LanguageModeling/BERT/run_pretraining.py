@@ -52,7 +52,7 @@ import modeling
 from file_utils import PYTORCH_PRETRAINED_BERT_CACHE
 from schedulers import LinearWarmUpScheduler, PolyWarmUpScheduler
 from tokenization import BertTokenizer
-from utils import format_step, get_rank, get_world_size, is_main_process
+from utils import format_step, get_rank, get_world_size, is_main_process, is_local_root
 
 torch._C._jit_set_profiling_mode(False)
 torch._C._jit_set_profiling_executor(False)
@@ -774,7 +774,7 @@ def main():
 
                     if global_step >= args.steps_this_run or training_steps % (
                             args.num_steps_per_checkpoint * args.gradient_accumulation_steps) == 0 or timeout_sent:
-                        if not args.skip_checkpoint:
+                        if is_local_root() and not args.skip_checkpoint:
                             # Save a trained model
                             dllogger.log(step="PARAMETER", data={
                                          "checkpoint_step": global_step})

@@ -82,7 +82,7 @@ else
 fi
 
 CMD+=" --do_lower_case "
-CMD+=" --bert_model=bert-large-uncased "
+CMD+=" --bert_model=bert-base-uncased "
 CMD+=" --learning_rate=$learning_rate "
 CMD+=" --seed=$seed "
 CMD+=" --num_train_epochs=$epochs "
