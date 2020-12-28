@@ -46,7 +46,7 @@ init_checkpoint=${24:-"None"}
 RESULTS_DIR=$CODEDIR/results
 CHECKPOINTS_DIR=$RESULTS_DIR/checkpoints-randomk
 
-mkdir -p $CHECKPOINTS_DIR
+clush --hostfile ~/hostfile "mkdir -p $CHECKPOINTS_DIR"
 
 # byteps 
 
