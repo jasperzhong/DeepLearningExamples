@@ -44,7 +44,7 @@ CODEDIR=${23:-$WORKSPACE}
 BERT_CONFIG=$CODEDIR/bert_base_config.json
 init_checkpoint=${24:-"None"}
 RESULTS_DIR=$CODEDIR/results
-CHECKPOINTS_DIR=$RESULTS_DIR/checkpoints
+CHECKPOINTS_DIR=$RESULTS_DIR/checkpoints-randomk
 
 mkdir -p $CHECKPOINTS_DIR
 
@@ -62,7 +62,7 @@ server_hosts=worker-hosts
 pem_file=${25:-$HOME/vyce.pem}
 
 ## finetune params
-threadpool_size=0
+threadpool_size=16
 omp_num_threads=4
 partition_bytes=4096000
 min_compress_bytes=1024000
@@ -146,6 +146,9 @@ CMD+=" $ALL_REDUCE_POST_ACCUMULATION_FP16"
 CMD+=" $INIT_CHECKPOINT"
 CMD+=" --do_train"
 CMD+=" --json-summary ${RESULTS_DIR}/dllogger.json "
+# compression 
+CMD+=" --compressor randomk"
+CMD+=" --k 0.03125"
 
 # byteps env
 ENV=""
