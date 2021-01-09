@@ -15,11 +15,11 @@
 
 # echo "Container nvidia build = " $NVIDIA_BUILD_ID
 train_batch_size=${1:-128}
-learning_rate=${2:-"0.0017678"}
+learning_rate=${2:-"0.0025"}
 precision=${3:-"fp16"}
 num_gpus=${4:-8}
-warmup_proportion=${5:-"0.025"}
-train_steps=${6:-112500}
+warmup_proportion=${5:-"0.05"}
+train_steps=${6:-56250}
 save_checkpoint_steps=${7:-5000}
 resume_training=${8:-"false"}
 create_logfile=${9:-"true"}
@@ -44,7 +44,7 @@ CODEDIR=${23:-$WORKSPACE}
 BERT_CONFIG=$CODEDIR/bert_base_config.json
 init_checkpoint=${24:-"None"}
 RESULTS_DIR=$CODEDIR/results
-CHECKPOINTS_DIR=$RESULTS_DIR/checkpoints-randomk
+CHECKPOINTS_DIR=$RESULTS_DIR/checkpoints-8k
 
 clush --hostfile ~/hostfile "mkdir -p $CHECKPOINTS_DIR"
 
@@ -62,7 +62,7 @@ server_hosts=worker-hosts
 pem_file=${25:-$HOME/vyce.pem}
 
 ## finetune params
-threadpool_size=16
+threadpool_size=0
 omp_num_threads=4
 partition_bytes=4096000
 min_compress_bytes=1024000
@@ -147,8 +147,8 @@ CMD+=" $INIT_CHECKPOINT"
 CMD+=" --do_train"
 CMD+=" --json-summary ${RESULTS_DIR}/dllogger.json "
 # compression 
-CMD+=" --compressor randomk"
-CMD+=" --k 0.03125"
+# CMD+=" --compressor randomk"
+# CMD+=" --k 0.03125"
 
 # byteps env
 ENV=""
@@ -163,8 +163,8 @@ ENV+=" --env BYTEPS_PARTITION_BYTES:$partition_bytes"
 ENV+=" --env BYTEPS_LOG_LEVEL:INFO"
 ENV+=" --env BYTEPS_FORCE_DISTRIBUTED:1"
 ENV+=" --env BYTEPS_TRACE_ON:1"
-ENV+=" --env BYTEPS_TRACE_START_STEP:10"
-ENV+=" --env BYTEPS_TRACE_END_STEP:20"
+ENV+=" --env BYTEPS_TRACE_START_STEP:100"
+ENV+=" --env BYTEPS_TRACE_END_STEP:110"
 ENV+=" --env BYTEPS_TRACE_DIR:./traces"
 
 CMD="python3 $repo_path/launcher/dist_launcher.py -WH $worker_hosts -SH $server_hosts --scheduler-ip $ip --scheduler-port $port --interface $interface -i $pem_file --username ubuntu $ENV source ~/.zshrc; bpslaunch python3 $CMD"

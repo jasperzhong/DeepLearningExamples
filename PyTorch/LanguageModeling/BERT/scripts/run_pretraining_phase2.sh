@@ -15,11 +15,11 @@
 
 # echo "Container nvidia build = " $NVIDIA_BUILD_ID
 train_batch_size=${1:-128}
-learning_rate=${2:-"0.0017678"}
+learning_rate=${2:-"0.0025"}
 precision=${3:-"fp16"}
 num_gpus=${4:-8}
-warmup_proportion=${5:-"0.025"}
-train_steps=${6:-112500}
+warmup_proportion=${5:-"0.05"}
+train_steps=${6:-56250}
 save_checkpoint_steps=${7:-5000}
 resume_training=${8:-"false"}
 create_logfile=${9:-"true"}
@@ -30,9 +30,9 @@ job_name=${13:-"bert_lamb_pretraining"}
 allreduce_post_accumulation=${14:-"true"}
 allreduce_post_accumulation_fp16=${15:-"true"}
 train_batch_size_phase2=${16:-128}
-learning_rate_phase2=${17:-"0.0017678"}
-warmup_proportion_phase2=${18:-"0.025"}
-train_steps_phase2=${19:-12500}
+learning_rate_phase2=${17:-"0.0025"}
+warmup_proportion_phase2=${18:-"0.05"}
+train_steps_phase2=${19:-6250}
 gradient_accumulation_steps_phase2=${20:-8}
 DATASET=hdf5_lower_case_1_seq_len_128_max_pred_20_masked_lm_prob_0.15_random_seed_12345_dupe_factor_5_shard_1536_large/books_wiki_en_corpus_train # change this for other datasets
 BERT_PREP_WORKING_DIR=$HOME/datasets
@@ -44,7 +44,7 @@ CODEDIR=${23:-$WORKSPACE}
 BERT_CONFIG=$CODEDIR/bert_base_config.json
 init_checkpoint=${24:-"None"}
 RESULTS_DIR=$CODEDIR/results
-CHECKPOINTS_DIR=$RESULTS_DIR/checkpoints-dithering
+CHECKPOINTS_DIR=$RESULTS_DIR/checkpoints-8x
 
 mkdir -p $CHECKPOINTS_DIR
 
@@ -62,11 +62,11 @@ server_hosts=worker-hosts
 pem_file=${25:-$HOME/vyce.pem}
 
 ## finetune params
-threadpool_size=16
+threadpool_size=0
 omp_num_threads=4
 partition_bytes=4096000
 min_compress_bytes=1024000
-server_engine_thread=8
+server_engine_thread=4
 
 
 if [ ! -d "$DATA_DIR_PHASE1" ] ; then
@@ -240,8 +240,8 @@ CMD+=" $ALL_REDUCE_POST_ACCUMULATION_FP16"
 CMD+=" --do_train --phase2 --resume_from_checkpoint --phase1_end_step=$train_steps"
 CMD+=" --json-summary ${RESULTS_DIR}/dllogger.json "
 # compression 
-CMD+=" --compressor dithering"
-CMD+=" --k 127"
+# CMD+=" --compressor dithering"
+# CMD+=" --k 127"
 
 # byteps env
 ENV=""
@@ -256,8 +256,8 @@ ENV+=" --env BYTEPS_PARTITION_BYTES:$partition_bytes"
 ENV+=" --env BYTEPS_LOG_LEVEL:INFO"
 ENV+=" --env BYTEPS_FORCE_DISTRIBUTED:1"
 ENV+=" --env BYTEPS_TRACE_ON:1"
-ENV+=" --env BYTEPS_TRACE_START_STEP:10"
-ENV+=" --env BYTEPS_TRACE_END_STEP:20"
+ENV+=" --env BYTEPS_TRACE_START_STEP:100"
+ENV+=" --env BYTEPS_TRACE_END_STEP:110"
 ENV+=" --env BYTEPS_TRACE_DIR:./traces"
 
 CMD="python3 $repo_path/launcher/dist_launcher.py -WH $worker_hosts -SH $server_hosts --scheduler-ip $ip --scheduler-port $port --interface $interface -i $pem_file --username ubuntu $ENV source ~/.zshrc; bpslaunch python3 $CMD"
