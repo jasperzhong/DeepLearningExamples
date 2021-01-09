@@ -58,7 +58,7 @@ NVIDIA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
 
 repo_path=$HOME/repos/byteps
 worker_hosts=worker-hosts
-server_hosts=worker-hosts
+server_hosts=server-hosts
 pem_file=${25:-$HOME/vyce.pem}
 
 ## finetune params
