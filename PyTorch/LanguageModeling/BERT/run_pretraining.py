@@ -273,7 +273,7 @@ def parse_arguments():
                         help="Number of training steps in Phase1 - seq len 128")
     parser.add_argument('--init_loss_scale',
                         type=int,
-                        default=2**16,
+                        default=2**14,
                         help="Initial loss scaler value")
     parser.add_argument("--do_train",
                         default=False,
