@@ -336,6 +336,7 @@ def setup_training(args):
         # BytePS: Init
         bps.init()
         args.n_gpu = 1
+        # we need do pushpull every substep
         args.allreduce_post_accumulation = False
         args.allreduce_post_accumulation_fp16 = False
 
@@ -425,6 +426,7 @@ def prepare_model_and_optimizer(args, device):
     optimizer = FusedLAMB(optimizer_grouped_parameters,
                           lr=args.learning_rate)
 
+    # BytePS: register 
     compression_params = {
         "compressor": args.compressor,
         "ef": args.ef,
@@ -482,18 +484,9 @@ def prepare_model_and_optimizer(args, device):
             for param, saved_param in zip(amp.master_params(optimizer), checkpoint['master params']):
                 param.data.copy_(saved_param.data)
 
-    # TODO: adapt to byteps
     if args.local_rank != -1:
-        # BytePS: broadcast parameters & optimizer state.
-        # broadcast AMP master parameters
+        # BytePS: nothing to do here
         pass
-
-        # if not args.allreduce_post_accumulation:
-        #     model = DDP(model, message_size=250000000,
-        #                 gradient_predivide_factor=get_world_size())
-        # else:
-        #     flat_dist_call([param.data for param in model.parameters()],
-        #                    torch.distributed.broadcast, (0,))
     elif args.n_gpu > 1:
         model = torch.nn.DataParallel(model)
 
@@ -506,33 +499,7 @@ def take_optimizer_step(args, optimizer, model, overflow_buf, global_step):
 
     global skipped_steps
     if args.allreduce_post_accumulation:
-        # manually allreduce gradients after all accumulation steps
-        # check for Inf/NaN
-        # 1. allocate an uninitialized buffer for flattened gradient
-        # loss_scale = _amp_state.loss_scalers[0].loss_scale(
-        # ) if args.fp16 else 1
-        # master_grads = [p.grad for p in amp.master_params(
-        #     optimizer) if p.grad is not None]
-        # flat_grad_size = sum(p.numel() for p in master_grads)
-        # allreduce_dtype = torch.float16 if args.allreduce_post_accumulation_fp16 else torch.float32
-        # flat_raw = torch.empty(
-        #     flat_grad_size, device='cuda', dtype=allreduce_dtype)
-        # # 2. combine unflattening and predivision of unscaled 'raw' gradient
-        # allreduced_views = apex_C.unflatten(flat_raw, master_grads)
-        # overflow_buf.zero_()
-        # amp_C.multi_tensor_scale(65536,
-        #                          overflow_buf,
-        #                          [master_grads, allreduced_views],
-        #                          loss_scale / (get_world_size() * args.gradient_accumulation_steps))
-        # # 3. sum gradient across ranks. Because of the predivision, this averages the gradient
-        # torch.distributed.all_reduce(flat_raw)
-        # # 4. combine unscaling and unflattening of allreduced gradient
-        # overflow_buf.zero_()
-        # amp_C.multi_tensor_scale(65536,
-        #                          overflow_buf,
-        #                          [allreduced_views, master_grads],
-        #                          1./loss_scale)
-        # 5. update loss scale
+        # BytePS: original allreduce code is removed 
 
         if args.fp16:
             scaler = _amp_state.loss_scalers[0]
@@ -541,15 +508,7 @@ def take_optimizer_step(args, optimizer, model, overflow_buf, global_step):
             had_overflow = 0
         # 6. call optimizer step function
         if had_overflow == 0:
-            # BytePS: pushpull has been done already
-            for name, param in model.named_parameters():
-                if param.grad is not None:
-                    if name == "bert.embeddings.token_type_embeddings.weight":
-                        print("bert.embeddings.token_type_embeddings.weight's grad")
-                        print(param.grad)
-                        print("bert.embeddings.token_type_embeddings.weight")
-                        print(param.data)
-
+          
             with optimizer.skip_synchronize():
                 optimizer.step()
             global_step += 1
@@ -569,34 +528,11 @@ def take_optimizer_step(args, optimizer, model, overflow_buf, global_step):
                 print("step=%d check master params: %d, rank=%d" %
                       (global_step, any(check_nan), get_rank()), flush=True)
 
-        check_nan = []
         for param in model.parameters():
-            check_nan.extend(torch.isnan(
-                param.data).flatten().cpu().numpy().tolist())
             param.grad = None
-        print("step=%d check model params: %d, rank=%d" %
-              (global_step, any(check_nan), get_rank()), flush=True)
-
-        if any(check_nan):
-            print("nan detected!!! scan model parameters!")
-            for name, param in model.named_parameters():
-                is_nan = any(torch.isnan(
-                    param.data).flatten().cpu().numpy().tolist())
-                print("%s whether nan: %d" % (name, is_nan), flush=True)
-                if is_nan:
-                    print(param.data)
-
-            print("check master params!")
-            check_nan = []
-            for param in optimizer._amp_stash.all_fp32_from_fp16_params:
-                is_nan = all(torch.isnan(
-                    param.data).flatten().cpu().numpy().tolist())
-                if is_nan:
-                    print("master params nan: ")
-                    print(param.data)
-                param.grad = None
 
     else:
+        # BytePS: already synchronized
         with optimizer.skip_synchronize():
             optimizer.step()
         # optimizer.zero_grad()
@@ -734,7 +670,7 @@ def main():
                     if args.fp16:
                         with amp.scale_loss(loss, optimizer, delay_overflow_check=args.allreduce_post_accumulation) as scaled_loss:
                             scaled_loss.backward()
-                            # BytePS: only pushpull after accumulation
+                            # BytePS: synchronize before copying/adding to master grad
                             optimizer.synchronize()
                     else:
                         loss.backward()
