@@ -15,11 +15,11 @@
 
 # echo "Container nvidia build = " $NVIDIA_BUILD_ID
 train_batch_size=${1:-128}
-learning_rate=${2:-"0.0025"}
+learning_rate=${2:-"0.0014865"}
 precision=${3:-"fp16"}
 num_gpus=${4:-8}
-warmup_proportion=${5:-"0.05"}
-train_steps=${6:-56250}
+warmup_proportion=${5:-"0.025"}
+train_steps=${6:-112500}
 save_checkpoint_steps=${7:-5000}
 resume_training=${8:-"false"}
 create_logfile=${9:-"true"}
@@ -44,7 +44,7 @@ CODEDIR=${23:-$WORKSPACE}
 BERT_CONFIG=$CODEDIR/bert_base_config.json
 init_checkpoint=${24:-"None"}
 RESULTS_DIR=$CODEDIR/results
-CHECKPOINTS_DIR=$RESULTS_DIR/checkpoints-8k
+CHECKPOINTS_DIR=$RESULTS_DIR/checkpoints
 
 clush --hostfile ~/hostfile "mkdir -p $CHECKPOINTS_DIR"
 
@@ -62,7 +62,7 @@ server_hosts=server-hosts
 pem_file=${25:-$HOME/vyce.pem}
 
 ## finetune params
-threadpool_size=0
+threadpool_size=16
 omp_num_threads=4
 partition_bytes=4096000
 min_compress_bytes=1024000
@@ -147,8 +147,10 @@ CMD+=" $INIT_CHECKPOINT"
 CMD+=" --do_train"
 CMD+=" --json-summary ${RESULTS_DIR}/dllogger.json "
 # compression 
-# CMD+=" --compressor randomk"
-# CMD+=" --k 0.03125"
+CMD+=" --compressor onebit"
+# CMD+=" --k 0.001"
+CMD+=" --onebit-scaling"
+CMD+=" --ef vanilla"
 
 # byteps env
 ENV=""
