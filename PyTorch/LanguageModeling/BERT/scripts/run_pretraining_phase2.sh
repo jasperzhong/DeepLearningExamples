@@ -15,11 +15,11 @@
 
 # echo "Container nvidia build = " $NVIDIA_BUILD_ID
 train_batch_size=${1:-128}
-learning_rate=${2:-"0.0025"}
+learning_rate=${2:-"0.0014865"}
 precision=${3:-"fp16"}
 num_gpus=${4:-8}
-warmup_proportion=${5:-"0.05"}
-train_steps=${6:-56250}
+warmup_proportion=${5:-"0.025"}
+train_steps=${6:-12500}
 save_checkpoint_steps=${7:-5000}
 resume_training=${8:-"false"}
 create_logfile=${9:-"true"}
@@ -30,9 +30,9 @@ job_name=${13:-"bert_lamb_pretraining"}
 allreduce_post_accumulation=${14:-"true"}
 allreduce_post_accumulation_fp16=${15:-"true"}
 train_batch_size_phase2=${16:-128}
-learning_rate_phase2=${17:-"0.0025"}
-warmup_proportion_phase2=${18:-"0.05"}
-train_steps_phase2=${19:-6250}
+learning_rate_phase2=${17:-"0.0014865"}
+warmup_proportion_phase2=${18:-"0.025"}
+train_steps_phase2=${19:-12500}
 gradient_accumulation_steps_phase2=${20:-8}
 DATASET=hdf5_lower_case_1_seq_len_128_max_pred_20_masked_lm_prob_0.15_random_seed_12345_dupe_factor_5_shard_1536_large/books_wiki_en_corpus_train # change this for other datasets
 BERT_PREP_WORKING_DIR=$HOME/datasets
@@ -44,7 +44,7 @@ CODEDIR=${23:-$WORKSPACE}
 BERT_CONFIG=$CODEDIR/bert_base_config.json
 init_checkpoint=${24:-"None"}
 RESULTS_DIR=$CODEDIR/results
-CHECKPOINTS_DIR=$RESULTS_DIR/checkpoints-8x
+CHECKPOINTS_DIR=$RESULTS_DIR/checkpoints
 
 mkdir -p $CHECKPOINTS_DIR
 
@@ -62,7 +62,7 @@ server_hosts=server-hosts
 pem_file=${25:-$HOME/vyce.pem}
 
 ## finetune params
-threadpool_size=0
+threadpool_size=16
 omp_num_threads=4
 partition_bytes=4096000
 min_compress_bytes=1024000
