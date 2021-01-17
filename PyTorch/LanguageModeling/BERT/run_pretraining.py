@@ -29,7 +29,7 @@ import signal
 import time
 from concurrent.futures import ProcessPoolExecutor
 from os import name
-
+import struct 
 
 import byteps.torch as bps
 import dllogger
@@ -563,6 +563,10 @@ def main():
 
     if is_main_process():
         dllogger.log(step="PARAMETER", data={"SEED": args.seed})
+    
+    if bps.local_rank() == 0:
+        f = open("lr.s", "wb")
+        f.truncate(8)
 
     raw_train_start = None
     if args.do_train:
@@ -678,6 +682,12 @@ def main():
 
                     if training_steps % args.gradient_accumulation_steps == 0:
                         lr_scheduler.step()  # learning rate warmup
+                        # update lr
+                        if bps.local_rank() == 0:
+                            f.seek(0)
+                            ba = struct.pack("d", optimizer.param_groups[0]['lr'])
+                            f.write(ba)
+                            f.flush()
                         global_step = take_optimizer_step(
                             args, optimizer, model, overflow_buf, global_step)
 
