@@ -567,6 +567,10 @@ def main():
     if bps.local_rank() == 0:
         f = open("lr.s", "wb")
         f.truncate(8)
+        f.seek(0)
+        ba = struct.pack("d", optimizer.param_groups[0]['lr'])
+        f.write(ba)
+        f.flush()
 
     raw_train_start = None
     if args.do_train:
