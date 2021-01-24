@@ -29,9 +29,10 @@ import signal
 import time
 from concurrent.futures import ProcessPoolExecutor
 from os import name
-import struct 
+import struct
 
 import byteps.torch as bps
+from torch._C import Value
 import dllogger
 import h5py
 import numpy as np
@@ -40,7 +41,7 @@ from apex import amp
 import amp_C
 import apex_C
 from apex.amp import _amp_state
-from apex.optimizers import FusedLAMB
+from apex.optimizers import FusedLAMB, FusedLANS
 from apex.parallel import DistributedDataParallel as DDP
 from apex.parallel.distributed import flat_dist_call
 from torch.utils.data import (DataLoader, Dataset, RandomSampler,
@@ -291,6 +292,8 @@ def parse_arguments():
                         help='Disable tqdm progress bar')
     parser.add_argument('--steps_this_run', type=int, default=-1,
                         help='If provided, only run this many steps before exiting')
+    parser.add_argument('--optimizer', type=str,
+                        default='lans', help='lans or lamb')
     # additional arguments for gradient compression
     parser.add_argument('--compressor', type=str, default='',
                         help='which compressor')
@@ -423,10 +426,16 @@ def prepare_model_and_optimizer(args, device):
             nd in n for nd in no_decay)], 'weight_decay': 0.01},
         {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}]
 
-    optimizer = FusedLAMB(optimizer_grouped_parameters,
-                          lr=args.learning_rate)
+    if args.optimizer == 'lamb':
+        optimizer = FusedLAMB(optimizer_grouped_parameters,
+                              lr=args.learning_rate)
+    elif args.optimizer == 'lans':
+        optimizer = FusedLANS(optimizer_grouped_parameters,
+                              lr=args.learning_rate, normalize_grad=False)
+    else:
+        raise ValueError("unsupported optimizer %s" % args.optimizer)
 
-    # BytePS: register 
+    # BytePS: register
     compression_params = {
         "compressor": args.compressor,
         "ef": args.ef,
@@ -499,7 +508,7 @@ def take_optimizer_step(args, optimizer, model, overflow_buf, global_step):
 
     global skipped_steps
     if args.allreduce_post_accumulation:
-        # BytePS: original allreduce code is removed 
+        # BytePS: original allreduce code is removed
 
         if args.fp16:
             scaler = _amp_state.loss_scalers[0]
@@ -508,7 +517,7 @@ def take_optimizer_step(args, optimizer, model, overflow_buf, global_step):
             had_overflow = 0
         # 6. call optimizer step function
         if had_overflow == 0:
-          
+
             with optimizer.skip_synchronize():
                 optimizer.step()
             global_step += 1
@@ -563,7 +572,7 @@ def main():
 
     if is_main_process():
         dllogger.log(step="PARAMETER", data={"SEED": args.seed})
-    
+
     if bps.local_rank() == 0:
         f = open("lr.s", "wb")
         f.truncate(8)
@@ -689,7 +698,8 @@ def main():
                         # update lr
                         if bps.local_rank() == 0:
                             f.seek(0)
-                            ba = struct.pack("d", optimizer.param_groups[0]['lr'])
+                            ba = struct.pack(
+                                "d", optimizer.param_groups[0]['lr'])
                             f.write(ba)
                             f.flush()
                         global_step = take_optimizer_step(
