@@ -469,6 +469,7 @@ def prepare_model_and_optimizer(args, device):
             model, optimizer = amp.initialize(
                 model, optimizer, opt_level="O2", loss_scale=args.loss_scale, cast_model_outputs=torch.float16)
         amp._amp_state.loss_scalers[0]._loss_scale = args.init_loss_scale
+        amp._amp_state.loss_scalers[0]._max_loss_scale = args.init_loss_scale
 
     model.checkpoint_activations(args.checkpoint_activations)
 
