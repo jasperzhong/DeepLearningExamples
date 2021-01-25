@@ -14,12 +14,12 @@
 # limitations under the License.
 
 # echo "Container nvidia build = " $NVIDIA_BUILD_ID
-train_batch_size=${1:-128}
-learning_rate=${2:-"0.0025"}
+train_batch_size=${1:-64}
+learning_rate=${2:-"0.0017678"}
 precision=${3:-"fp16"}
 num_gpus=${4:-8}
-warmup_proportion=${5:-"0.05"}
-train_steps=${6:-56250}
+warmup_proportion=${5:-"0.025"}
+train_steps=${6:-112500}
 save_checkpoint_steps=${7:-5000}
 resume_training=${8:-"false"}
 create_logfile=${9:-"true"}
@@ -29,11 +29,11 @@ seed=${12:-12439}
 job_name=${13:-"bert_lans_pretraining"}
 allreduce_post_accumulation=${14:-"true"}
 allreduce_post_accumulation_fp16=${15:-"true"}
-train_batch_size_phase2=${16:-128}
-learning_rate_phase2=${17:-"0.0025"}
-warmup_proportion_phase2=${18:-"0.05"}
-train_steps_phase2=${19:-6250}
-gradient_accumulation_steps_phase2=${20:-8}
+train_batch_size_phase2=${16:-64}
+learning_rate_phase2=${17:-"0.0017678"}
+warmup_proportion_phase2=${18:-"0.025"}
+train_steps_phase2=${19:-12500}
+gradient_accumulation_steps_phase2=${20:-4}
 DATASET=hdf5_lower_case_1_seq_len_128_max_pred_20_masked_lm_prob_0.15_random_seed_12345_dupe_factor_5_shard_1536_large/books_wiki_en_corpus_train # change this for other datasets
 BERT_PREP_WORKING_DIR=$HOME/datasets
 DATA_DIR_PHASE1=${21:-$BERT_PREP_WORKING_DIR/${DATASET}/}
@@ -44,7 +44,7 @@ CODEDIR=${23:-$WORKSPACE}
 BERT_CONFIG=$CODEDIR/bert_base_config.json
 init_checkpoint=${24:-"None"}
 RESULTS_DIR=$CODEDIR/results
-CHECKPOINTS_DIR=$RESULTS_DIR/checkpoints-lans-8k
+CHECKPOINTS_DIR=$RESULTS_DIR/checkpoints-lans-4k
 
 clush --hostfile ~/hostfile "mkdir -p $CHECKPOINTS_DIR"
 
@@ -179,15 +179,15 @@ if [ "$create_logfile" = "true" ] ; then
 fi
 
 set -x
-if [ -z "$LOGFILE" ] ; then
-   $CMD
-else
-   (
-     $CMD
-   ) |& tee $LOGFILE
-fi
+# if [ -z "$LOGFILE" ] ; then
+#    $CMD
+# else
+#    (
+#      $CMD
+#    ) |& tee $LOGFILE
+# fi
 
-sleep 50000
+# sleep 50000
 
 set +x
 
@@ -244,6 +244,7 @@ CMD+=" $ALL_REDUCE_POST_ACCUMULATION"
 CMD+=" $ALL_REDUCE_POST_ACCUMULATION_FP16"
 CMD+=" --do_train --phase2 --resume_from_checkpoint --phase1_end_step=$train_steps"
 CMD+=" --json-summary ${RESULTS_DIR}/dllogger_phase2.json "
+CMD+=" --init_loss_scale 4096"
 # compression 
 # CMD+=" --compressor onebit --onebit-scaling --ef vanilla"
 # CMD+=" --compressor topk --k 0.001 --ef vanilla"
