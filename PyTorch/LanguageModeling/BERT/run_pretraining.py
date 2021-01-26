@@ -679,6 +679,10 @@ def main():
                     if args.n_gpu > 1:
                         loss = loss.mean()  # mean() to average on multi-gpu.
 
+                    if not np.isfinite(loss):
+                        print("BytePS: local rank %d loss is nan!!!" %
+                              (bps.local_rank()))
+
                     divisor = args.gradient_accumulation_steps
                     if args.gradient_accumulation_steps > 1:
                         if not args.allreduce_post_accumulation:
