@@ -14,26 +14,26 @@
 # limitations under the License.
 
 # echo "Container nvidia build = " $NVIDIA_BUILD_ID
-train_batch_size=${1:-128}
-learning_rate=${2:-"0.001767767"}
+train_batch_size=${1:-64}
+learning_rate=${2:-"0.00125"}
 precision=${3:-"fp16"}
 num_gpus=${4:-8}
-warmup_proportion=${5:-"0.025"}
-train_steps=${6:-112500}
+warmup_proportion=${5:-"0.0125"}
+train_steps=${6:-225000}
 save_checkpoint_steps=${7:-5000}
 resume_training=${8:-"false"}
 create_logfile=${9:-"true"}
 accumulate_gradients=${10:-"true"}
 gradient_accumulation_steps=${11:-1}
 seed=${12:-12439}
-job_name=${13:-"bert_lamb_pretraining"}
+job_name=${13:-"bert_lans_pretraining"}
 allreduce_post_accumulation=${14:-"true"}
 allreduce_post_accumulation_fp16=${15:-"true"}
 train_batch_size_phase2=${16:-128}
-learning_rate_phase2=${17:-"0.0014865"}
-warmup_proportion_phase2=${18:-"0.025"}
+learning_rate_phase2=${17:-"0.00125"}
+warmup_proportion_phase2=${18:-"0.0125"}
 train_steps_phase2=${19:-12500}
-gradient_accumulation_steps_phase2=${20:-8}
+gradient_accumulation_steps_phase2=${20:-4}
 DATASET=hdf5_lower_case_1_seq_len_128_max_pred_20_masked_lm_prob_0.15_random_seed_12345_dupe_factor_5_shard_1536_large/books_wiki_en_corpus_train # change this for other datasets
 BERT_PREP_WORKING_DIR=$HOME/datasets
 DATA_DIR_PHASE1=${21:-$BERT_PREP_WORKING_DIR/${DATASET}/}
@@ -44,7 +44,7 @@ CODEDIR=${23:-$WORKSPACE}
 BERT_CONFIG=$CODEDIR/bert_base_config.json
 init_checkpoint=${24:-"None"}
 RESULTS_DIR=$CODEDIR/results
-CHECKPOINTS_DIR=$RESULTS_DIR/checkpoints-1bit
+CHECKPOINTS_DIR=$RESULTS_DIR/checkpoints-lans-2k
 
 clush --hostfile ~/hostfile "mkdir -p $CHECKPOINTS_DIR"
 
@@ -62,7 +62,7 @@ server_hosts=server-hosts
 pem_file=${25:-$HOME/vyce.pem}
 
 ## finetune params
-threadpool_size=16
+threadpool_size=0
 omp_num_threads=4
 partition_bytes=4096000
 min_compress_bytes=1024000
@@ -147,7 +147,7 @@ CMD+=" $INIT_CHECKPOINT"
 CMD+=" --do_train"
 CMD+=" --json-summary ${RESULTS_DIR}/dllogger_phase1.json "
 # compression 
-CMD+=" --compressor onebit --onebit-scaling --ef vanilla"
+# CMD+=" --compressor onebit --onebit-scaling --ef vanilla"
 # CMD+=" --compressor topk --k 0.001 --ef vanilla"
 
 # byteps env
@@ -163,9 +163,9 @@ ENV+=" --env BYTEPS_PARTITION_BYTES:$partition_bytes"
 ENV+=" --env BYTEPS_LOG_LEVEL:INFO"
 ENV+=" --env BYTEPS_FORCE_DISTRIBUTED:1"
 ENV+=" --env BYTEPS_TRACE_ON:1"
-ENV+=" --env BYTEPS_TRACE_START_STEP:100"
-ENV+=" --env BYTEPS_TRACE_END_STEP:110"
-ENV+=" --env BYTEPS_TRACE_DIR:./traces"
+# ENV+=" --env BYTEPS_TRACE_START_STEP:100"
+# ENV+=" --env BYTEPS_TRACE_END_STEP:110"
+# ENV+=" --env BYTEPS_TRACE_DIR:./traces"
 
 CMD="python3 $repo_path/launcher/dist_launcher.py -WH $worker_hosts -SH $server_hosts --scheduler-ip $ip --scheduler-port $port --interface $interface -i $pem_file --username ubuntu $ENV source ~/.zshrc; bpslaunch python3 $CMD"
 
@@ -187,7 +187,7 @@ else
    ) |& tee $LOGFILE
 fi
 
-sleep 60000
+sleep 110000
 
 set +x
 
@@ -245,7 +245,7 @@ CMD+=" $ALL_REDUCE_POST_ACCUMULATION_FP16"
 CMD+=" --do_train --phase2 --resume_from_checkpoint --phase1_end_step=$train_steps"
 CMD+=" --json-summary ${RESULTS_DIR}/dllogger_phase2.json "
 # compression 
-CMD+=" --compressor onebit --onebit-scaling --ef vanilla"
+# CMD+=" --compressor onebit --onebit-scaling --ef vanilla"
 # CMD+=" --compressor topk --k 0.001 --ef vanilla"
 
 # byteps env
