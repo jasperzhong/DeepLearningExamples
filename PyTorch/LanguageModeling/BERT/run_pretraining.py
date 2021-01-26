@@ -728,10 +728,12 @@ def main():
                                          "final_loss": final_loss})
                     elif training_steps % (args.log_freq * args.gradient_accumulation_steps) == 0:
                         average_loss /= (args.log_freq * divisor)
+                        avg_loss = torch.tensor(
+                            average_loss, dtype=torch.float32).cuda()
                         bps.declare("avg_loss")
                         bps.push_pull_inplace(
-                            average_loss, name="avg_loss", average=False)
-                        average_loss /= bps.size()
+                            avg_loss, name="avg_loss", average=False)
+                        average_loss = avg_loss.item() / bps.size()
                         if is_main_process():
                             dllogger.log(step=(epoch, global_step, ), data={"average_loss": average_loss,
                                                                             "step_loss": loss.item() * args.gradient_accumulation_steps / divisor,
