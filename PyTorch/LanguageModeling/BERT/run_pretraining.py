@@ -679,11 +679,6 @@ def main():
                     if args.n_gpu > 1:
                         loss = loss.mean()  # mean() to average on multi-gpu.
 
-                    if not torch.isfinite(loss):
-                        print("[step %d]\tlocal rank %d loss is %f!!!" %
-                              (global_step, bps.local_rank(), loss.item()))
-                        loss.fill_(0)  # skip
-
                     divisor = args.gradient_accumulation_steps
                     if args.gradient_accumulation_steps > 1:
                         if not args.allreduce_post_accumulation:
