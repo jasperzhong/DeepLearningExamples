@@ -44,7 +44,7 @@ CODEDIR=${23:-$WORKSPACE}
 BERT_CONFIG=$CODEDIR/bert_base_config.json
 init_checkpoint=${24:-"None"}
 RESULTS_DIR=$CODEDIR/results
-CHECKPOINTS_DIR=$RESULTS_DIR/checkpoints-lans-4k
+CHECKPOINTS_DIR=$RESULTS_DIR/checkpoints-lans-4k-2
 
 clush --hostfile ~/hostfile "mkdir -p $CHECKPOINTS_DIR"
 
@@ -146,6 +146,7 @@ CMD+=" $ALL_REDUCE_POST_ACCUMULATION_FP16"
 CMD+=" $INIT_CHECKPOINT"
 CMD+=" --do_train"
 CMD+=" --json-summary ${RESULTS_DIR}/dllogger_phase1.json "
+CMD+=" --init_loss_scale 4096"
 # compression 
 # CMD+=" --compressor onebit --onebit-scaling --ef vanilla"
 # CMD+=" --compressor topk --k 0.001 --ef vanilla"
@@ -179,15 +180,15 @@ if [ "$create_logfile" = "true" ] ; then
 fi
 
 set -x
-# if [ -z "$LOGFILE" ] ; then
-#    $CMD
-# else
-#    (
-#      $CMD
-#    ) |& tee $LOGFILE
-# fi
+if [ -z "$LOGFILE" ] ; then
+   $CMD
+else
+   (
+     $CMD
+   ) |& tee $LOGFILE
+fi
 
-# sleep 50000
+sleep 55000
 
 set +x
 
