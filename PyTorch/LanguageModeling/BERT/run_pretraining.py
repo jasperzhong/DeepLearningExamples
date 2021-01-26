@@ -727,8 +727,13 @@ def main():
                             dllogger.log(step=(epoch, global_step, ), data={
                                          "final_loss": final_loss})
                     elif training_steps % (args.log_freq * args.gradient_accumulation_steps) == 0:
+                        average_loss /= (args.log_freq * divisor)
+                        bps.declare("avg_loss")
+                        bps.push_pull_inplace(
+                            average_loss, name="avg_loss", average=False)
+                        average_loss /= bps.size()
                         if is_main_process():
-                            dllogger.log(step=(epoch, global_step, ), data={"average_loss": average_loss / (args.log_freq * divisor),
+                            dllogger.log(step=(epoch, global_step, ), data={"average_loss": average_loss,
                                                                             "step_loss": loss.item() * args.gradient_accumulation_steps / divisor,
                                                                             "learning_rate": optimizer.param_groups[0]['lr'],
                                                                             "loss scale": amp._amp_state.loss_scalers[0]._loss_scale})
