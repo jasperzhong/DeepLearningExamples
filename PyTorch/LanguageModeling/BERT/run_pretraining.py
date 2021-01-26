@@ -456,9 +456,9 @@ def prepare_model_and_optimizer(args, device):
     bps.broadcast_parameters(model.state_dict(), root_rank=0)
     bps.broadcast_optimizer_state(optimizer, root_rank=0)
 
-    lr_scheduler = PolyWarmUpScheduler(optimizer,
-                                       warmup=args.warmup_proportion,
-                                       total_steps=args.max_steps)
+    lr_scheduler = LinearWarmUpScheduler(optimizer,
+                                         warmup=args.warmup_proportion,
+                                         total_steps=args.max_steps)
 
     if args.fp16:
 
