@@ -682,6 +682,7 @@ def main():
                     if not torch.isfinite(loss):
                         print("[step %d]\tlocal rank %d loss is %f!!!" %
                               (global_step, bps.local_rank(), loss.item()))
+                        loss = 0  # skip
 
                     divisor = args.gradient_accumulation_steps
                     if args.gradient_accumulation_steps > 1:
