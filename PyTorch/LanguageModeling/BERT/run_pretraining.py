@@ -458,7 +458,7 @@ def prepare_model_and_optimizer(args, device):
 
     lr_scheduler = LinearWarmUpScheduler(optimizer,
                                          warmup=args.warmup_proportion,
-                                         total_steps=args.max_steps, last_epoch=global_step)
+                                         total_steps=args.max_steps)
 
     if args.fp16:
 
@@ -474,15 +474,16 @@ def prepare_model_and_optimizer(args, device):
     model.checkpoint_activations(args.checkpoint_activations)
 
     if args.resume_from_checkpoint:
-        keys = list(checkpoint['optimizer']['state'].keys())
-        # Override hyperparameters from previous checkpoint
-        for key in keys:
-            checkpoint['optimizer']['state'][key]['step'] = global_step
-        for iter, item in enumerate(checkpoint['optimizer']['param_groups']):
-            checkpoint['optimizer']['param_groups'][iter]['step'] = global_step
-            checkpoint['optimizer']['param_groups'][iter]['t_total'] = args.max_steps
-            checkpoint['optimizer']['param_groups'][iter]['warmup'] = args.warmup_proportion
-            checkpoint['optimizer']['param_groups'][iter]['lr'] = args.learning_rate
+        if args.phase2 or args.init_checkpoint:
+            keys = list(checkpoint['optimizer']['state'].keys())
+            # Override hyperparameters from previous checkpoint
+            for key in keys:
+                checkpoint['optimizer']['state'][key]['step'] = global_step
+            for iter, item in enumerate(checkpoint['optimizer']['param_groups']):
+                checkpoint['optimizer']['param_groups'][iter]['step'] = global_step
+                checkpoint['optimizer']['param_groups'][iter]['t_total'] = args.max_steps
+                checkpoint['optimizer']['param_groups'][iter]['warmup'] = args.warmup_proportion
+                checkpoint['optimizer']['param_groups'][iter]['lr'] = args.learning_rate
         optimizer.load_state_dict(checkpoint['optimizer'])  # , strict=False)
 
         # Restore AMP master parameters
@@ -572,14 +573,6 @@ def main():
 
     if is_main_process():
         dllogger.log(step="PARAMETER", data={"SEED": args.seed})
-
-    if bps.local_rank() == 0:
-        f = open("lr.s", "wb")
-        f.truncate(8)
-        f.seek(0)
-        ba = struct.pack("d", optimizer.param_groups[0]['lr'])
-        f.write(ba)
-        f.flush()
 
     raw_train_start = None
     if args.do_train:
@@ -694,14 +687,8 @@ def main():
                     average_loss += loss.item()
 
                     if training_steps % args.gradient_accumulation_steps == 0:
-                        lr_scheduler.step()  # learning rate warmup
-                        # update lr
-                        if bps.local_rank() == 0:
-                            f.seek(0)
-                            ba = struct.pack(
-                                "d", optimizer.param_groups[0]['lr'])
-                            f.write(ba)
-                            f.flush()
+                        lr_scheduler.step(global_step)  # learning rate warmup
+
                         global_step = take_optimizer_step(
                             args, optimizer, model, overflow_buf, global_step)
 
