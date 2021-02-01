@@ -21,7 +21,7 @@ from torch.optim.lr_scheduler import _LRScheduler
 class LRScheduler(_LRScheduler):
     def __init__(self, optimizer, last_epoch=-1):
         # Check if using mixed precision training
-        self.mixed_training = False
+        self.mixed_training = True
         base_optimizer = optimizer
 
         # Check that optimizer param is valid
