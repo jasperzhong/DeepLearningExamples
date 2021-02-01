@@ -458,7 +458,7 @@ def prepare_model_and_optimizer(args, device):
 
     lr_scheduler = LinearWarmUpScheduler(optimizer,
                                          warmup=args.warmup_proportion,
-                                         total_steps=args.max_steps)
+                                         total_steps=args.max_steps, last_epoch=global_step)
 
     if args.fp16:
 
