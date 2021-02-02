@@ -610,6 +610,7 @@ def main():
                 # may not exist in all checkpoints
                 epoch = checkpoint.get('epoch', 0)
                 restored_data_loader = checkpoint.get('data_loader', None)
+                print("epoch: %d\t dataloader is None: %d" % (epoch, restored_data_loader is None))
 
             shared_file_list = {}
 
