@@ -57,7 +57,7 @@ else
   mpi_command=" -m torch.distributed.launch --nproc_per_node=$num_gpu"
 fi
 
-CMD="python $mpi_command run_glue.py "
+CMD="python3 $mpi_command run_glue.py "
 CMD+="--task_name ${task_name} "
 if [[ $mode == *"train"* ]] ; then
   CMD+="--do_train "
