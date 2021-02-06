@@ -76,7 +76,7 @@ fi
 CMD+="--gradient_accumulation_steps=$gradient_accumulation_steps "
 CMD+="--do_lower_case "
 CMD+="--data_dir $data_dir "
-CMD+="--bert_model bert-large-uncased "
+CMD+="--bert_model bert-base-uncased "
 CMD+="--seed $seed "
 CMD+="--init_checkpoint $init_checkpoint "
 CMD+="--warmup_proportion $warmup_proportion "

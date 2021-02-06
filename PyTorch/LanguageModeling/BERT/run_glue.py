@@ -401,7 +401,7 @@ def get_train_features(data_dir, bert_model, max_seq_length, do_lower_case,
             train_features = pickle.load(reader)
         logger.info("Loaded pre-processed features from {}".format(
             cached_train_features_file))
-    except:
+    except FileNotFoundError:
         logger.info("Did not find pre-processed features from {}".format(
             cached_train_features_file))
         train_examples = processor.get_train_examples(data_dir)
