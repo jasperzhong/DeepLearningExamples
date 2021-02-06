@@ -15,13 +15,16 @@
 
 set -e
 
-echo "Container nvidia build = " $NVIDIA_BUILD_ID
-
-init_checkpoint=${1:-"/workspace/bert/checkpoints/bert_uncased.pt"}
-data_dir=${2:-"$BERT_PREP_WORKING_DIR/download/glue/MRPC/"}
-vocab_file=${3:-"$BERT_PREP_WORKING_DIR/download/google_pretrained_weights/uncased_L-24_H-1024_A-16/vocab.txt"}
-config_file=${4:-"/workspace/bert/bert_config.json"}
-out_dir=${5:-"/workspace/bert/results/MRPC"}
+# echo "Container nvidia build = " $NVIDIA_BUILD_ID
+WORKSPACE=$HOME/repos/DeepLearningExamples/PyTorch/LanguageModeling/BERT
+CODEDIR=${23:-$WORKSPACE}
+RESULTS_DIR=$CODEDIR/results
+init_checkpoint=${1:-$RESULTS_DIR/checkpoints-lans-2k/ckpt_125000.pt}
+BERT_PREP_WORKING_DIR=$HOME/datasets
+data_dir=${2:-"$BERT_PREP_WORKING_DIR/glue_data/MRPC/"}
+vocab_file=${9:-$WORKSPACE/vocab/vocab}
+config_file=${12:-$CODEDIR/bert_base_config.json}
+out_dir=${10:-$WORKSPACE/results/MRPC}
 task_name=${6:-"mrpc"}
 num_gpu=${7:-"8"}
 batch_size=${8:-"16"}
