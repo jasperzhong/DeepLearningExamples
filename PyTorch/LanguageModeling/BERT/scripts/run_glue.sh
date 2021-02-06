@@ -19,7 +19,7 @@ set -e
 WORKSPACE=$HOME/repos/DeepLearningExamples/PyTorch/LanguageModeling/BERT
 CODEDIR=${23:-$WORKSPACE}
 RESULTS_DIR=$CODEDIR/results
-init_checkpoint=${1:-$RESULTS_DIR/checkpoints-lans-2k/ckpt_125000.pt}
+init_checkpoint=${1:-$RESULTS_DIR/checkpoints-lans-2k/ckpt_250000.pt}
 BERT_PREP_WORKING_DIR=$HOME/datasets
 data_dir=${2:-"$BERT_PREP_WORKING_DIR/glue_data/MRPC/"}
 vocab_file=${9:-$WORKSPACE/vocab/vocab}
