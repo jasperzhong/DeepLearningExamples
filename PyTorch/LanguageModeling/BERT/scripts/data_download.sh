@@ -15,8 +15,8 @@
 
 DATA_DIR=${1:-$HOME/datasets}
 
-# # Download vocab files from pretrained model
-# cd vocab && python3 download_models.py && rm *.zip && rm ./*/*.ckpt.*
+# Download vocab files from pretrained model
+cd vocab && python3 download_models.py && rm *.zip && rm ./*/*.ckpt.*
 
 # # Download SQUAD
 # cd $DATA_DIR/squad && . squad_download.sh
