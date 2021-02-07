@@ -15,10 +15,11 @@
 
 set -e
 
-learning_rate=${1:-"2e-5"}
 echo "lr=" $learning_rate
+repo_name=${1:-"checkpoints-lans-2k"}
 task_name=${2:-"MRPC"}
-repo_name=${3:-"checkpoints-lans-2k"}
+learning_rate=${3:-"2e-5"}
+
 
 WORKSPACE=$HOME/repos/DeepLearningExamples/PyTorch/LanguageModeling/BERT
 CODEDIR=$WORKSPACE
