@@ -28,10 +28,10 @@ RESULTS_DIR=$CODEDIR/results
 init_checkpoint=${5:-$RESULTS_DIR/$repo_name/ckpt_250000.pt}
 
 BERT_PREP_WORKING_DIR=$HOME/datasets
-data_dir=${6:-"$BERT_PREP_WORKING_DIR/glue_data/$task_name/"}
+data_dir=${6:-"$BERT_PREP_WORKING_DIR/glue_data/$data_name/"}
 vocab_file=${7:-$WORKSPACE/vocab/vocab}
 config_file=${8:-$CODEDIR/bert_base_config.json}
-out_dir=${9:-$WORKSPACE/results/$task_name}
+out_dir=${9:-$WORKSPACE/results/$data_name}
 num_gpu=${10:-"8"}
 batch_size=${11:-"32"}
 gradient_accumulation_steps=${12:-"1"}
