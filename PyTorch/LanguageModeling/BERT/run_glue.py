@@ -678,7 +678,7 @@ def main(args):
                 f.write(model_to_save.config.to_json_string())
 
     if (args.do_eval or args.do_predict) and is_main_process():
-        eval_examples = processor.get_dev_examples(args.data_dir)
+        eval_examples = processor.get_test_examples(args.data_dir)
         eval_features, label_map = convert_examples_to_features(
             eval_examples,
             processor.get_labels(),
