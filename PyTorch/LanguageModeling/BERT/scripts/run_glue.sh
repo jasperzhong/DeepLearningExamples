@@ -17,27 +17,28 @@ set -e
 
 learning_rate=${1:-"2e-5"}
 echo "lr=" $learning_rate
+task_name=${2:-"MRPC"}
+repo_name=${3:-"checkpoints-lans-2k"}
 
-# echo "Container nvidia build = " $NVIDIA_BUILD_ID
 WORKSPACE=$HOME/repos/DeepLearningExamples/PyTorch/LanguageModeling/BERT
-CODEDIR=${23:-$WORKSPACE}
+CODEDIR=$WORKSPACE
 RESULTS_DIR=$CODEDIR/results
-init_checkpoint=${17:-$RESULTS_DIR/checkpoints-lans-2k/ckpt_250000.pt}
+init_checkpoint=${4:-$RESULTS_DIR/$repo_name/ckpt_250000.pt}
+
 BERT_PREP_WORKING_DIR=$HOME/datasets
-data_dir=${2:-"$BERT_PREP_WORKING_DIR/glue_data/MRPC/"}
-vocab_file=${9:-$WORKSPACE/vocab/vocab}
-config_file=${12:-$CODEDIR/bert_base_config.json}
-out_dir=${10:-$WORKSPACE/results/MRPC}
-task_name=${6:-"mrpc"}
-num_gpu=${7:-"8"}
-batch_size=${8:-"32"}
-gradient_accumulation_steps=${9:-"1"}
-warmup_proportion=${11:-"0.1"}
-epochs=${12:-"3"}
-max_steps=${13:-"-1.0"}
-precision=${14:-"fp16"}
-seed=${15:-"2"}
-mode=${16:-"train eval"}
+data_dir=${5:-"$BERT_PREP_WORKING_DIR/glue_data/$task_name/"}
+vocab_file=${6:-$WORKSPACE/vocab/vocab}
+config_file=${7:-$CODEDIR/bert_base_config.json}
+out_dir=${8:-$WORKSPACE/results/$task_name}
+num_gpu=${9:-"8"}
+batch_size=${10:-"32"}
+gradient_accumulation_steps=${11:-"1"}
+warmup_proportion=${12:-"0.1"}
+epochs=${13:-"3"}
+max_steps=${14:-"-1.0"}
+precision=${15:-"fp16"}
+seed=${16:-"2"}
+mode=${17:-"train eval"}
 
 mkdir -p $out_dir
 
