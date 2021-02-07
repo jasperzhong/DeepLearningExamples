@@ -61,7 +61,7 @@ else
 fi
 
 CMD="python3 $mpi_command run_glue.py "
-CMD+="--task_name ${task_name} "
+CMD+="--task_name ${task_name,,} "
 if [[ $mode == *"train"* ]] ; then
   CMD+="--do_train "
   CMD+="--train_batch_size=$batch_size "
