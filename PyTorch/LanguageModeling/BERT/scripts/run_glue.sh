@@ -15,11 +15,14 @@
 
 set -e
 
+learning_rate=${1:-"2e-5"}
+echo "lr=" $learning_rate
+
 # echo "Container nvidia build = " $NVIDIA_BUILD_ID
 WORKSPACE=$HOME/repos/DeepLearningExamples/PyTorch/LanguageModeling/BERT
 CODEDIR=${23:-$WORKSPACE}
 RESULTS_DIR=$CODEDIR/results
-init_checkpoint=${1:-$RESULTS_DIR/checkpoints-lans-2k/ckpt_250000.pt}
+init_checkpoint=${17:-$RESULTS_DIR/checkpoints-lans-2k/ckpt_250000.pt}
 BERT_PREP_WORKING_DIR=$HOME/datasets
 data_dir=${2:-"$BERT_PREP_WORKING_DIR/glue_data/MRPC/"}
 vocab_file=${9:-$WORKSPACE/vocab/vocab}
@@ -27,9 +30,8 @@ config_file=${12:-$CODEDIR/bert_base_config.json}
 out_dir=${10:-$WORKSPACE/results/MRPC}
 task_name=${6:-"mrpc"}
 num_gpu=${7:-"8"}
-batch_size=${8:-"16"}
+batch_size=${8:-"32"}
 gradient_accumulation_steps=${9:-"1"}
-learning_rate=${10:-"2.4e-5"}
 warmup_proportion=${11:-"0.1"}
 epochs=${12:-"3"}
 max_steps=${13:-"-1.0"}
