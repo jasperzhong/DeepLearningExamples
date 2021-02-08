@@ -18,7 +18,7 @@ set -e
 repo_name=${1:-"checkpoints-lans-2k"}
 task_name=${2:-"MRPC"}
 learning_rate=${3:-"2e-5"}
-data_name=${4:$task_name}
+data_name=${4:-$task_name}
 echo "lr=" $learning_rate
 seed=${5:-"2"}
 
