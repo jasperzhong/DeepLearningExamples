@@ -93,7 +93,7 @@ CMD+="--max_steps $max_steps "
 CMD+="--vocab_file=$vocab_file "
 CMD+="--config_file=$config_file "
 CMD+="--output_dir $out_dir "
-# CMD+="--loss_scale 1024 "
+CMD+="--loss_scale 1024 "
 CMD+="$use_fp16"
 
 LOGFILE=$out_dir/logfile
