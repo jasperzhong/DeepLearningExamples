@@ -20,12 +20,13 @@ task_name=${2:-"MRPC"}
 learning_rate=${3:-"2e-5"}
 data_name=${4:$task_name}
 echo "lr=" $learning_rate
+seed=${5:-"2"}
 
 
 WORKSPACE=$HOME/repos/DeepLearningExamples/PyTorch/LanguageModeling/BERT
 CODEDIR=$WORKSPACE
 RESULTS_DIR=$CODEDIR/results
-init_checkpoint=${5:-$RESULTS_DIR/$repo_name/ckpt_250000.pt}
+init_checkpoint=${17:-$RESULTS_DIR/$repo_name/ckpt_250000.pt}
 
 BERT_PREP_WORKING_DIR=$HOME/datasets
 data_dir=${6:-"$BERT_PREP_WORKING_DIR/glue_data/$data_name/"}
@@ -39,7 +40,6 @@ warmup_proportion=${13:-"0.1"}
 epochs=${14:-"5"}
 max_steps=${15:-"-1.0"}
 precision=${16:-"fp16"}
-seed=${17:-"2"}
 mode=${18:-"train eval"}
 
 mkdir -p $out_dir
@@ -93,7 +93,7 @@ CMD+="--max_steps $max_steps "
 CMD+="--vocab_file=$vocab_file "
 CMD+="--config_file=$config_file "
 CMD+="--output_dir $out_dir "
-CMD+="--loss_scale 1024 "
+# CMD+="--loss_scale 1024 "
 CMD+="$use_fp16"
 
 LOGFILE=$out_dir/logfile
