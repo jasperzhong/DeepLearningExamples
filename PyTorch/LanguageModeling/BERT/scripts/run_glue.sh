@@ -38,7 +38,7 @@ gradient_accumulation_steps=${12:-"1"}
 warmup_proportion=${13:-"0.1"}
 epochs=${14:-"5"}
 max_steps=${15:-"-1.0"}
-precision=${16:-"fp32"}
+precision=${16:-"fp16"}
 seed=${17:-"2"}
 mode=${18:-"train eval"}
 
@@ -93,7 +93,7 @@ CMD+="--max_steps $max_steps "
 CMD+="--vocab_file=$vocab_file "
 CMD+="--config_file=$config_file "
 CMD+="--output_dir $out_dir "
-# CMD+="--loss_scale 256 "
+CMD+="--loss_scale 1024 "
 CMD+="$use_fp16"
 
 LOGFILE=$out_dir/logfile
