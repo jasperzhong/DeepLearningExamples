@@ -38,7 +38,7 @@ gradient_accumulation_steps=${12:-"1"}
 warmup_proportion=${13:-"0.1"}
 epochs=${14:-"5"}
 max_steps=${15:-"-1.0"}
-precision=${16:-"fp16"}
+precision=${16:-"fp32"}
 seed=${17:-"2"}
 mode=${18:-"train eval"}
 
