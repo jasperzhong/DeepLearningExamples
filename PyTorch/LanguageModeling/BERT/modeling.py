@@ -15,7 +15,8 @@
 
 """PyTorch BERT model."""
 
-from __future__ import absolute_import, division, print_function, unicode_literals
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 
 import copy
 import json
@@ -23,9 +24,9 @@ import logging
 import math
 import os
 import shutil
+import sys
 import tarfile
 import tempfile
-import sys
 from io import open
 from typing import Final
 
@@ -35,13 +36,14 @@ from torch.nn import CrossEntropyLoss
 from torch.utils import checkpoint
 
 sys.path.append('/workspace/bert/')
-from file_utils import cached_path
+from collections import OrderedDict
 
-from torch.nn import Module
-from torch.nn.parameter import Parameter
 import torch.nn.functional as F
 import torch.nn.init as init
-from collections import OrderedDict
+from torch.nn import Module
+from torch.nn.parameter import Parameter
+
+from file_utils import cached_path
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +65,7 @@ def load_tf_weights_in_bert(model, tf_checkpoint_path):
     """
     try:
         import re
+
         import numpy as np
         import tensorflow as tf
     except ImportError:
@@ -119,7 +122,7 @@ def load_tf_weights_in_bert(model, tf_checkpoint_path):
     return model
 
 def gelu(x):
-    return torch.nn.functional.gelu(x, approximate=True)
+    return torch.nn.functional.gelu(x, approximate='tanh')
 
 def swish(x):
     return x * torch.sigmoid(x)
