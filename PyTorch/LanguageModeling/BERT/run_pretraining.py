@@ -27,7 +27,7 @@ import os
 import random
 import signal
 import time
-from typing import Any, Callable, Final
+from typing import Any, Callable, Final, List
 
 import dllogger
 import h5py
@@ -36,6 +36,8 @@ import numpy as np
 import torch
 import torch.distributed as dist
 import torch.optim as optim
+from torch import Tensor
+from torch.cuda.amp.grad_scaler import GradScaler, OptState
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data import (DataLoader, Dataset, RandomSampler,
                               SequentialSampler)
@@ -50,12 +52,204 @@ from utils import format_step, get_rank, get_world_size, is_main_process
 # from lamb_amp_opt.fused_lamb import FusedLAMBAMP
 
 
+# START MONKEY HACKING
+
+def undo_adamw(params: List[Tensor],
+               grads: List[Tensor],
+               exp_avgs: List[Tensor],
+               exp_avg_sqs: List[Tensor],
+               state_steps: List[int],
+               *,
+               beta1: float,
+               beta2: float,
+               lr: float,
+               weight_decay: float,
+               eps: float):
+    for i, param in enumerate(params):
+        grad = grads[i]
+        exp_avg = exp_avgs[i]
+        exp_avg_sq = exp_avg_sqs[i]
+        # same as step
+        # because the worker didn't call optim.adam to update step
+        step = state_steps[i]
+
+        bias_correction1 = 1 - beta1 ** step
+        bias_correction2 = 1 - beta2 ** step
+
+        # undo param
+        step_size = lr / bias_correction1
+        denom = (exp_avg_sq.sqrt() / math.sqrt(bias_correction2)).add_(eps)
+        param.addcdiv_(exp_avg, denom, value=step_size)
+        param.div_(1 - lr * weight_decay)
+
+        # undo Vt
+        exp_avg_sq.sub_(grad ** 2, alpha=1 - beta2).div_(beta2)
+
+        # undo Mt
+        exp_avg.sub_(grad, alpha=1 - beta1).div_(beta1)
+
+
+@torch.no_grad()
+def adamw_undo(self):
+    for group in self.param_groups:
+        params_with_grad = []
+        grads = []
+        exp_avgs = []
+        exp_avg_sqs = []
+        state_steps = []
+        beta1, beta2 = group['betas']
+
+        for p in group['params']:
+            if p.grad is not None:
+                params_with_grad.append(p)
+                if p.grad.is_sparse:
+                    raise RuntimeError(
+                        'Adam does not support sparse gradients, please consider SparseAdam instead')
+                grads.append(p.grad)
+
+                state = self.state[p]
+                # Don't need lazy state initialization
+
+                exp_avgs.append(state['exp_avg'])
+                exp_avg_sqs.append(state['exp_avg_sq'])
+
+                # record the step after step update
+                state_steps.append(state['step'])
+
+        undo_adamw(params_with_grad,
+                   grads,
+                   exp_avgs,
+                   exp_avg_sqs,
+                   state_steps,
+                   beta1=beta1,
+                   beta2=beta2,
+                   lr=group['lr'],
+                   weight_decay=group['weight_decay'],
+                   eps=group['eps'])
+
+        # update exp_avg, exo_avg_sq in state
+        for p, mt, vt in zip(params_with_grad, exp_avgs, exp_avg_sqs):
+            state = self.state[p]
+            state['step'] -= 1
+            state['exp_avg_sq'] = vt
+            state['exp_avg'] = mt
+
+
+setattr(optim.AdamW, "undo", adamw_undo)
+
+
+def step(self, optimizer, undo, *args, **kwargs):
+    """
+    :meth:`step` carries out the following two operations:
+
+    1.  Internally invokes ``unscale_(optimizer)`` (unless :meth:`unscale_` was explicitly called for ``optimizer``
+        earlier in the iteration).  As part of the :meth:`unscale_`, gradients are checked for infs/NaNs.
+    2.  If no inf/NaN gradients are found, invokes ``optimizer.step()`` using the unscaled
+        gradients.  Otherwise, ``optimizer.step()`` is skipped to avoid corrupting the params.
+
+    ``*args`` and ``**kwargs`` are forwarded to ``optimizer.step()``.
+
+    Returns the return value of ``optimizer.step(*args, **kwargs)``.
+
+    Args:
+        optimizer (torch.optim.Optimizer):  Optimizer that applies the gradients.
+        args:  Any arguments.
+        kwargs:  Any keyword arguments.
+
+    .. warning::
+        Closure use is not currently supported.
+    """
+    if (not self._enabled):
+        return optimizer.step(*args, **kwargs)
+
+    if "closure" in kwargs:
+        raise RuntimeError(
+            "Closure use is not currently supported if GradScaler is enabled.")
+
+    self._check_scale_growth_tracker("step")
+
+    optimizer_state = self._per_optimizer_states[id(optimizer)]
+
+    if optimizer_state["stage"] is OptState.STEPPED:
+        raise RuntimeError(
+            "step() has already been called since the last update().")
+
+    retval = None
+
+    if (hasattr(optimizer, "_step_supports_amp_scaling") and optimizer._step_supports_amp_scaling):
+        # This optimizer has customized scale-handling logic, so we can call optimizer.step() directly.
+        # The contract with custom optimizers is that their step() should accept an additional,
+        # optional grad_scaler kwarg.  We append self to the kwargs so the custom optimizer has full information:
+        # it can query its own state, invoke unscale_ on itself, etc
+        retval = optimizer.step(*args, **dict(kwargs, grad_scaler=self))
+        optimizer_state["stage"] = OptState.STEPPED
+        return retval
+
+    if optimizer_state["stage"] is OptState.READY:
+        self.unscale_(optimizer)
+
+    assert len(optimizer_state["found_inf_per_device"]
+               ) > 0, "No inf checks were recorded for this optimizer."
+
+    if undo:
+        some_param = None
+        # original state
+        for group in optimizer.param_groups:
+            for p in group['params']:
+                if p.grad is not None:
+                    some_param = p.clone().detach()
+                    if "momentum_buffer" in optimizer.state[p]:
+                        some_momentum = optimizer.state[p]["momentum_buffer"].clone(
+                        ).detach()
+                    break
+            if some_param is not None:
+                break
+
+    retval = self._maybe_opt_step(optimizer, optimizer_state, *args, **kwargs)
+    if undo:
+        assert hasattr(
+            optimizer, "undo"), "The optimizer does not have an undo method"
+        optimizer.undo()
+
+        # check if the state is the same
+        some_momentum_undo = None
+        for group in optimizer.param_groups:
+            for p in group['params']:
+                if p.grad is not None:
+                    some_param_undo = p.clone().detach()
+                    print("undo-then-redo param check: ",
+                          torch.allclose(some_param, some_param_undo))
+                    if "momentum_buffer" in optimizer.state[p]:
+                        some_momentum_undo = optimizer.state[p]["momentum_buffer"].clone(
+                        ).detach()
+                        print("undo-then-redo momentum check: ",
+                              torch.allclose(some_momentum, some_momentum_undo))
+                    break
+            if some_param_undo is not None:
+                break
+
+        # redo
+        retval = self._maybe_opt_step(
+            optimizer, optimizer_state, *args, **kwargs)
+        print("undo-then-redo finish!")
+
+    optimizer_state["stage"] = OptState.STEPPED
+
+    return retval
+
+
+GradScaler.step = step
+
+
+# END MONKEY HACKING
+
 # Enabling the TorchScript Runtime Backend NVFuser
 # torch._C._jit_set_nvfuser_enabled(True)
 # torch._C._jit_set_texpr_fuser_enabled(False)
 # torch._C._jit_override_can_fuse_on_cpu(False)
 # torch._C._jit_override_can_fuse_on_gpu(False)
 # torch._C._jit_set_bailout_depth(20)
+
 
 # Track whether a SIGTERM (cluster time up) has been handled
 timeout_sent = False
@@ -171,6 +365,8 @@ def parse_arguments():
                         default=None,
                         required=True,
                         help="Vocabulary mapping/file BERT was pretrainined on")
+    parser.add_argument('--undo-at-n-step', default=None, type=int,
+                        help='Undo at n step')
 
     # Other parameters
     parser.add_argument("--init_checkpoint",
@@ -451,8 +647,7 @@ def prepare_model_and_optimizer(args, device, sequence_output_is_dense):
                                        total_steps=args.max_steps,
                                        base_lr=args.learning_rate,
                                        device=device)
-    grad_scaler = torch.cuda.amp.GradScaler(
-        init_scale=args.init_loss_scale, enabled=args.fp16)
+    grad_scaler = GradScaler(init_scale=args.init_loss_scale, enabled=args.fp16)
 
     model.checkpoint_activations(args.checkpoint_activations)
 
@@ -553,9 +748,9 @@ def take_training_step(args, grad_scaler, model, criterion, batch, stats):
     grad_scaler.scale(loss).backward()
 
 
-def take_optimizer_step(args, lr_scheduler, optimizer, grad_scaler, device, stats):
+def take_optimizer_step(args, lr_scheduler, optimizer, grad_scaler, device, stats, undo=False):
     lr_scheduler.step()  # learning rate warmup
-    grad_scaler.step(optimizer)
+    grad_scaler.step(optimizer, undo=undo)
 
     # Stats copying is located here prior to the infinity check being reset
     # in GradScaler::update()
@@ -730,8 +925,14 @@ def main():
                                        model, criterion, batch, stats)
 
                 if not grad_accumulation_step:
+                    model_step = stats.host_stat_value('model_step')
+                    undo = False
+                    if model_step == args.undo_at_n_step:
+                        undo = True
+                        print("undo at step ", model_step)
+
                     take_optimizer_step(args, lr_scheduler,
-                                        optimizer, grad_scaler, device, stats)
+                                        optimizer, grad_scaler, device, stats, undo)
 
             # Log Optimizer Step
             if (not grad_accumulation_step) or timeout_sent:
